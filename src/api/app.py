@@ -120,34 +120,23 @@ def build_api_app() -> FastAPI:
             routes=app.routes,
         )
 
-        filtered_paths = {}
-        for path, methods in full_openapi.get("paths", {}).items():
-            if path == "/v1/auth/token":
-                filtered_paths[path] = methods
-                continue
+        # Lista integrações ativas do tenant + as permitidas ao usuário (união)
+        from src.core.replication import listar_nomes_integracoes_ativas
+        from src.core.openapi_expand import expand_executar_paths
 
-        # Expande o catch-all /v1/executar/{nome_int} em um path por permissão
-        catch = full_openapi.get("paths", {}).get("/v1/executar/{nome_int}")
-        if catch:
-            for nome_int in permitidos:
-                # Cópia profunda superficial dos métodos
-                import copy
+        ativas = set(listar_nomes_integracoes_ativas())
+        nomes = sorted(ativas | set(permitidos))
+        # Se o usuário tem permissões, prioriza só as permitidas no docs (mais seguro).
+        # Se ainda não tiver nenhuma permissão, mostra as ativas para descoberta.
+        if permitidos:
+            nomes = sorted(set(permitidos) & ativas) or sorted(permitidos)
 
-                methods = copy.deepcopy(catch)
-                for m in methods.values():
-                    if isinstance(m, dict):
-                        m["summary"] = nome_int
-                        params = [
-                            p
-                            for p in (m.get("parameters") or [])
-                            if not (p.get("name") == "nome_int" and p.get("in") == "path")
-                        ]
-                        m["parameters"] = params
-                filtered_paths[f"/v1/executar/{nome_int}"] = methods
-
-        full_openapi["paths"] = filtered_paths
-        return full_openapi
-
+        return expand_executar_paths(
+            full_openapi,
+            "/v1/executar/{nome_int}",
+            nomes,
+            keep_paths=["/v1/auth/token"],
+        )
     @app.get("/docs", include_in_schema=False)
     async def get_protected_docs(user: dict = Depends(get_current_user)):
         return get_swagger_ui_html(

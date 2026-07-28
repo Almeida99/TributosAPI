@@ -134,6 +134,13 @@ async def ui_integracoes_save(
             db.integracao_query(sql, (nome, nome_integracao, ativo, script_python))
             logger.info("Inserted new integration")
 
+        # Replica automaticamente para todos os demais bancos ativos
+        from src.core.replication import replicar_integracao
+
+        falhas = replicar_integracao(nome, nome_integracao, ativo, script_python)
+        if falhas:
+            logger.warning("Replicação parcial da integração '%s'. Falhas: %s", nome_integracao, falhas)
+
         from src.core.refresher import trigger_refresh
         trigger_refresh()
         return RedirectResponse(url=ui_url(request, "/integracoes", usr_cod), status_code=303)
@@ -146,8 +153,21 @@ async def ui_integracoes_save(
 async def ui_integracoes_delete(id_int: int, request: Request, usr_cod: int = Depends(ui_validate_user)):
     try:
         logger.info(f"Deleting integration ID: {id_int}")
-        db.integracao_query("DELETE FROM TRB_INTEGRACAO WHERE ID_INTEGRACAO = ?", (id_int,))
-        
+        res = db.integracao_query(
+            "SELECT NOME_INTEGRACAO FROM TRB_INTEGRACAO WHERE ID_INTEGRACAO = ?",
+            (id_int,),
+        )
+        nome_int = (res[0].get("NOME_INTEGRACAO") if res else None) or ""
+
+        from src.core.replication import excluir_integracao_em_todos
+
+        if nome_int:
+            falhas = excluir_integracao_em_todos(nome_int)
+            if falhas:
+                logger.warning("Exclusão parcial de '%s'. Falhas: %s", nome_int, falhas)
+        else:
+            db.integracao_query("DELETE FROM TRB_INTEGRACAO WHERE ID_INTEGRACAO = ?", (id_int,))
+
         from src.core.refresher import trigger_refresh
         trigger_refresh()
         return RedirectResponse(url=ui_url(request, "/integracoes", usr_cod), status_code=303)
@@ -429,10 +449,19 @@ async def ui_terceiros_endpoint_add(
             "INSERT INTO TRB_INTEGRACAO_TERCEIROS_ENDPOINT (id_cadastro, nome_integracao, ativo) VALUES (?, ?, 1)",
             (id_t, nome_integracao)
         )
-        # Refresh das rotas dinâmicas
+        # Replica permissão para o mesmo login nos demais bancos
+        cad = db.integracao_query(
+            "SELECT login FROM TRB_INTEGRACAO_TERCEIROS_CADASTRO WHERE id_cadastro = ?",
+            (id_t,),
+        )
+        if cad:
+            from src.core.replication import replicar_endpoint_terceiro
+
+            replicar_endpoint_terceiro(cad[0]["login"], nome_integracao)
+
         from src.core.refresher import trigger_refresh
         trigger_refresh()
-        
+
         return RedirectResponse(url=ui_url(request, f"/terceiros/{id_t}/endpoints", usr_cod), status_code=303)
     except Exception as e:
         logger.error(f"Erro ao adicionar endpoint: {e}")
@@ -442,11 +471,25 @@ async def ui_terceiros_endpoint_add(
 @router.get("/terceiros/{id_t}/endpoints/{id_ep}/excluir", include_in_schema=False)
 async def ui_terceiros_endpoint_del(id_t: int, id_ep: int, request: Request, usr_cod: int = Depends(ui_validate_user)):
     try:
-        db.integracao_query("DELETE FROM TRB_INTEGRACAO_TERCEIROS_ENDPOINT WHERE id_endpoint = ?", (id_ep,))
-        # Refresh das rotas dinâmicas
+        info = db.integracao_query(
+            """
+            SELECT e.nome_integracao, c.login
+            FROM TRB_INTEGRACAO_TERCEIROS_ENDPOINT e
+            INNER JOIN TRB_INTEGRACAO_TERCEIROS_CADASTRO c ON c.id_cadastro = e.id_cadastro
+            WHERE e.id_endpoint = ?
+            """,
+            (id_ep,),
+        )
+        if info:
+            from src.core.replication import revogar_endpoint_terceiro_em_todos
+
+            revogar_endpoint_terceiro_em_todos(info[0]["login"], info[0]["nome_integracao"])
+        else:
+            db.integracao_query("DELETE FROM TRB_INTEGRACAO_TERCEIROS_ENDPOINT WHERE id_endpoint = ?", (id_ep,))
+
         from src.core.refresher import trigger_refresh
         trigger_refresh()
-        
+
         return RedirectResponse(url=ui_url(request, f"/terceiros/{id_t}/endpoints", usr_cod), status_code=303)
     except Exception as e:
         logger.error(f"Erro ao excluir endpoint: {e}")

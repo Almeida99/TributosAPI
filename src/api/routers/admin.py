@@ -52,6 +52,11 @@ async def incluir_endpoint(id_cadastro: int, corpo: IncluirEndpoint, _: bool = D
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cadastro não encontrado.")
     try:
         eid = repository.inserir_endpoint_permitido(id_cadastro, corpo.nome_integracao)
+        cad = repository.buscar_cadastro_por_id(id_cadastro)
+        if cad and cad.get("login"):
+            from src.core.replication import replicar_endpoint_terceiro
+
+            replicar_endpoint_terceiro(cad["login"], corpo.nome_integracao)
         from src.core.refresher import trigger_refresh
         trigger_refresh()
     except pyodbc.Error as e:

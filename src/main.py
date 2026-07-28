@@ -35,6 +35,35 @@ app.add_middleware(
 )
 app.add_middleware(TenantPathMiddleware)
 
+
+def custom_openapi():
+    """OpenAPI com um path por integração ativa do tenant atual."""
+    from fastapi.openapi.utils import get_openapi
+
+    from src.core.database import get_current_tenant
+    from src.core.openapi_expand import expand_executar_paths
+    from src.core.replication import listar_nomes_integracoes_ativas
+
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    nomes: list = []
+    if get_current_tenant():
+        nomes = listar_nomes_integracoes_ativas()
+    expand_executar_paths(
+        schema,
+        "/v1/executar/{nome_int}",
+        nomes,
+        keep_paths=["/v1/auth/token"],
+    )
+    return schema
+
+
+app.openapi = custom_openapi
+
 # --- API de integração com terceiros (JWT, docs em /api/docs) — opcional via env ---
 _api_subapp: Optional[FastAPI] = None
 
@@ -176,13 +205,14 @@ def registrar_endpoints():
             return await _executar_interno(nome_int, usr_cod, payload_params)
 
         # Sempre disponível para o painel (usr_cod) em /{banco}/v1/executar/{nome}
+        # include_in_schema=True para o custom_openapi expandir por integração
         app.add_api_route(
             path="/v1/executar/{nome_int}",
             endpoint=handler_interno,
             methods=["POST"],
             tags=["Integrações"],
             name="api_executar_catch",
-            include_in_schema=False,
+            include_in_schema=True,
         )
 
         if _api_subapp:
