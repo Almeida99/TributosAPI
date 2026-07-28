@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Card de Boas-vindas -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, #4e54c8, #8f94fb); border-radius: 15px;">
+            <div class="card-body p-4 text-white">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h2 class="fw-bold mb-1">Olá!</h2>
+                        <p class="mb-3 opacity-75">Bem-vindo ao centro de comando do TributosAPI.</p>
+                        <div class="d-flex gap-2">
+                            <a href="/integracoes/novo?usr_cod={{ usr_cod }}" class="btn btn-sm btn-light text-primary fw-bold">
+                                <i class="bi bi-plus-circle"></i> Nova Integração
+                            </a>
+                            <a href="/ajuda?usr_cod={{ usr_cod }}" class="btn btn-sm btn-outline-light">
+                                <i class="bi bi-book"></i> Ver Guia de Configuração
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-rocket-takeoff fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3 text-primary">
+                        <i class="bi bi-plug fs-4"></i>
+                    </div>
+                    <h6 class="mb-0 fw-bold">Integrações</h6>
+                </div>
+                <div class="d-flex justify-content-between align-items-end">
+                    <h3 class="fw-bold mb-0">{{ stats.integracoes_ativas or 0 }}</h3>
+                    <small class="text-muted"><a href="/integracoes?usr_cod={{ usr_cod }}" class="text-decoration-none">Ver todas <i class="bi bi-chevron-right"></i></a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-success bg-opacity-10 p-2 rounded-3 me-3 text-success">
+                        <i class="bi bi-check-circle fs-4"></i>
+                    </div>
+                    <h6 class="mb-0 fw-bold">Sucesso (24h)</h6>
+                </div>
+                <div class="d-flex justify-content-between align-items-end">
+                    <h3 class="fw-bold mb-0 text-success">{{ stats.sucesso_24h or 0 }}</h3>
+                    <small class="text-muted"><i class="bi bi-graph-up text-success me-1"></i>Taxa de 100%</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px;">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-danger bg-opacity-10 p-2 rounded-3 me-3 text-danger">
+                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                    </div>
+                    <h6 class="mb-0 fw-bold">Falhas (24h)</h6>
+                </div>
+                <div class="d-flex justify-content-between align-items-end">
+                    <h3 class="fw-bold mb-0 text-danger">{{ stats.falha_24h or 0 }}</h3>
+                    <small class="text-muted"><a href="/logs?usr_cod={{ usr_cod }}" class="text-decoration-none text-danger">Analisar logs <i class="bi bi-chevron-right"></i></a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Atalhos Rápidos -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm" style="border-radius: 15px;">
+            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                <h5 class="fw-bold mb-0">Atalhos Rápidos</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <a href="/integracoes/nova?usr_cod={{ usr_cod }}" class="btn btn-outline-primary d-block py-3 text-start px-4 h-100">
+                            <i class="bi bi-plus-circle fs-4 d-block mb-2"></i>
+                            <span class="fw-bold">Nova Integração</span>
+                            <small class="d-block text-muted">Crie um novo endpoint dinâmico</small>
+                        </a>
+                    </div>
+                    <div class="col-sm-6">
+                        <a href="/tokens?usr_cod={{ usr_cod }}" class="btn btn-outline-secondary d-block py-3 text-start px-4 h-100">
+                            <i class="bi bi-stars fs-4 d-block mb-2"></i>
+                            <span class="fw-bold">Gestão de IA</span>
+                            <small class="d-block text-muted">Configure tokens do Gemini</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assistente Banner -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm bg-light" style="border-radius: 15px; border-left: 5px solid #0d6efd !important;">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-1"></i> Dica da IA</h6>
+                <p class="small text-muted">
+                    Eu posso analisar seus logs e sugerir comandos SQL para correção automática de dados. 
+                    Experimente clicar no botão <b>"Resumir com IA"</b> na tela de Logs.
+                </p>
+                <hr>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary rounded-circle p-2 me-2"><i class="bi bi-robot"></i></span>
+                    <small class="text-primary fw-bold">Gemini Assistant Ativo</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

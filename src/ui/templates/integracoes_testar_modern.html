@@ -1,0 +1,94 @@
+{% extends "base_modern.html" %}
+{% block title %}Testar Integração{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10 mt-4">
+        <h3 class="mb-4">
+            <i class="bi bi-play-circle text-primary me-2"></i>Testador de Fluxo: <span class="text-secondary">{{ i.nome_integracao or i.nome_endpoint or i.nome }}</span>
+        </h3>
+        <div class="card shadow-sm border-0 mb-4 bg-glass">
+            <div class="card-body">
+                <form id="test-form">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">FILTRO (obrigatório)</label>
+                        <input type="text" id="test-filtro" class="form-control" placeholder="Ex: 28" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btn-run">
+                        <i class="bi bi-rocket-takeoff me-1"></i> Executar
+                    </button>
+                    <a href="{{ bp }}/integracoes?usr_cod={{ usr_cod }}" class="btn btn-outline-secondary ms-2">Voltar</a>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm border-0 d-none" id="result-card">
+            <div class="card-header bg-dark text-white fw-bold">
+                Resultado da Execução
+                <span class="badge bg-success float-end d-none" id="status-badge">Concluído</span>
+            </div>
+            <div class="card-body bg-light">
+                <pre id="result-log" class="mb-0" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.9em;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('test-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-run');
+    const filtro = document.getElementById('test-filtro').value;
+    const nomeIntegracao = "{{ i.nome_integracao }}";
+    console.log("nomeIntegracao:", nomeIntegracao);;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
+    
+    document.getElementById('result-card').classList.remove('d-none');
+    document.getElementById('result-log').textContent = "Iniciando processo...\nBuscando registros... aguarde.\n";
+    document.getElementById('status-badge').classList.add('d-none');
+    
+    try {
+        const res = await fetch(`{{ bp }}/v1/executar/${nomeIntegracao}?usr_cod={{ usr_cod }}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ filtro: filtro })
+        });
+        
+        let data;
+        let isJson = true;
+        const contentType = res.headers.get("content-type");
+        
+        if (contentType && contentType.includes("application/json")) {
+            data = await res.json();
+        } else {
+            data = await res.text();
+            isJson = false;
+        }
+        
+        document.getElementById('status-badge').classList.remove('d-none');
+        
+        if (res.ok) {
+            document.getElementById('status-badge').className = "badge bg-success float-end";
+            document.getElementById('status-badge').textContent = "Sucesso";
+        } else {
+            document.getElementById('status-badge').className = "badge bg-danger float-end";
+            document.getElementById('status-badge').textContent = "Falha";
+        }
+        
+        if (isJson) {
+            document.getElementById('result-log').textContent += JSON.stringify(data, null, 2);
+        } else {
+            document.getElementById('result-log').textContent += data;
+        }
+    } catch(err) {
+        document.getElementById('result-log').textContent += "\nErro Fatal: " + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-rocket-takeoff me-1"></i> Executar Envio em Lote';
+    }
+});
+</script>
+{% endblock %}

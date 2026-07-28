@@ -1,0 +1,245 @@
+{% extends "base_modern.html" %}
+
+{% block title %}Logs de Integração{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2 class="fw-bold m-0" style="font-family: 'Outfit';">Logs de Sistema</h2>
+        <p class="text-muted">Rastreabilidade completa de todas as operações e integrações</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ bp }}/integracoes?usr_cod={{ usr_cod }}" class="btn btn-secondary-glass shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+<!-- Tabs Estilizadas -->
+<div class="glass-card p-2 mb-4 shadow-sm" style="display: inline-flex; border-radius: 50px;">
+    <ul class="nav nav-pills" id="logTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active px-4 py-2 rounded-pill fw-bold" id="sistema-tab" data-bs-toggle="pill" data-bs-target="#sistema" type="button" role="tab">
+                <i class="bi bi-cpu me-2"></i>Integrações Sistema <span class="badge bg-light text-dark ms-2 small" style="font-size: 10px;">TRB_LOG_INTEGRACAO</span>
+            </button>
+        </li>
+
+        <li class="nav-item" role="presentation">
+            <button class="nav-link px-4 py-2 rounded-pill fw-bold" id="auditoria-tab" data-bs-toggle="pill" data-bs-target="#auditoria" type="button" role="tab">
+                <i class="bi bi-key me-2"></i>Acessos JWT <span class="badge bg-light text-dark ms-2 small" style="font-size: 10px;">TRB_INTEGRACAO_TERCEIROS_AUDITORIA</span>
+            </button>
+        </li>
+    </ul>
+</div>
+
+<div class="tab-content" id="logTabsContent">
+    <!-- Aba Sistema -->
+    <div class="tab-pane fade show active" id="sistema" role="tabpanel">
+        <div class="glass-card p-0 overflow-hidden shadow-lg border-0">
+            <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-dark text-white opacity-90 sticky-top">
+                        <tr>
+                            <th class="ps-4 py-3">Data/Hora</th>
+                            <th>ID Usuário</th>
+                            <th>Integração</th>
+                            <th>Filtro/Payload</th>
+                            <th>Status</th>
+                            <th>Retorno</th>
+                            <th class="pe-4">Duração</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-transparent">
+                        {% if logs_sistema %}
+                            {% for l in logs_sistema %}
+                            <tr>
+                                <td class="ps-4 text-nowrap"><small class="text-muted fw-medium">{{ l.data_hora }}</small></td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary-subtle rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">
+                                            <i class="bi bi-person text-primary"></i>
+                                        </div>
+                                        <span class="small fw-bold text-dark">{{ l.usr_id_log }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ l.nome_integracao }}</div>
+                                    <div class="text-muted small truncate-text" style="max-width: 200px;" title="{{ l.mensagem[:200] }}">{{ l.mensagem }}</div>
+                                </td>
+                                <td>
+                                    {% if l.filtro and l.filtro != "None" and l.filtro != "{}" %}
+                                    <button class="btn btn-sm btn-light border shadow-xs" onclick="mostrarPayload('{{ l.filtro|urlencode }}')">
+                                        <i class="bi bi-code-slash text-primary me-1"></i> <small>Ver</small>
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if l.status == '200' or l.status == '201' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2">Sucesso</span>
+                                    {% elif l.status %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2">Erro {{ l.status }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if l.resposta and l.resposta != "None" %}
+                                    <button class="btn btn-sm btn-outline-info border shadow-xs" onclick="mostrarResposta('{{ l.resposta|urlencode }}')">
+                                        <i class="bi bi-file-earmark-text me-1"></i> <small>Ver</small>
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="pe-4"><small class="text-muted">{{ l.duracao_ms }}ms</small></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="text-muted opacity-50">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        Nenhum log de sistema encontrado
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Aba Acessos JWT -->
+    <div class="tab-pane fade" id="auditoria" role="tabpanel">
+        <div class="glass-card p-0 overflow-hidden shadow-lg border-0">
+            <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-primary text-white opacity-90 sticky-top">
+                        <tr>
+                            <th class="ps-4 py-3">Data/Hora</th>
+                            <th>ID Cadastro</th>
+                            <th>Evento</th>
+                            <th>Método</th>
+                            <th>Rota</th>
+                            <th>Status</th>
+                            <th>Corpos (JSON)</th>
+                            <th>Resultado</th>
+                            <th class="pe-4">Duração</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-transparent">
+                        {% if logs_auditoria %}
+                            {% for lt in logs_auditoria %}
+                            <tr>
+                                <td class="ps-4 text-nowrap"><small class="text-muted fw-medium">{{ lt.data_hora }}</small></td>
+                                <td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3">{{ lt.login }}</span></td>
+                                <td><small class="fw-medium">{{ lt.tipo_evento }}</small></td>
+                                <td><span class="badge bg-light text-dark border">{{ lt.metodo_http }}</span></td>
+                                <td><code class="small text-truncate d-inline-block" style="max-width: 200px;" title="{{ lt.rota }}">{{ lt.rota }}</code></td>
+                                <td>
+                                    {% if lt.status_http >= 200 and lt.status_http < 300 %}
+                                    <span class="badge bg-success-subtle text-success">{{ lt.status_http }}</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">{{ lt.status_http }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        {% if lt.json_requisicao %}
+                                        <button class="btn btn-xs btn-outline-primary" onclick="mostrarPayload('{{ lt.json_requisicao|urlencode }}')">
+                                            <i class="bi bi-box-arrow-in-right"></i> <small>Req</small>
+                                        </button>
+                                        {% endif %}
+                                        {% if lt.json_retorno %}
+                                        <button class="btn btn-xs btn-outline-info" onclick="mostrarResposta('{{ lt.json_retorno|urlencode }}')">
+                                            <i class="bi bi-box-arrow-left"></i> <small>Resp</small>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if lt.sucesso %}
+                                    <span class="text-success small fw-bold"><i class="bi bi-check-circle-fill me-1"></i>OK</span>
+                                    {% else %}
+                                    <span class="text-danger small fw-bold" title="{{ lt.detalhe_erro }}" style="cursor:help;">
+                                        <i class="bi bi-exclamation-circle-fill me-1"></i>ERRO
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="pe-4"><small class="text-muted">{{ lt.duracao_ms }}ms</small></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="text-muted opacity-50">
+                                        <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
+                                        Nenhum registro de acesso via JWT encontrado
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Modal para exibir payload -->
+<div class="modal fade" id="modalPayload" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalTitle">Payload de Envio</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-dark">
+                <pre id="payloadContent" class="text-light mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-size: 12px; font-family: monospace;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function mostrarPayload(encoded) {
+    try {
+        var xml = decodeURIComponent(encoded.replace(/\+/g, ' '));
+        // Verificar se é XML ou texto
+        if (xml.includes('<') && xml.includes('>')) {
+            var formatted = xml.replace(/></g, '>\n<').replace(/^\s+$/g, '');
+            document.getElementById('payloadContent').textContent = formatted;
+        } else {
+            document.getElementById('payloadContent').textContent = xml;
+        }
+        document.querySelector('.modal-header h5').textContent = 'Payload de Envio';
+        new bootstrap.Modal(document.getElementById('modalPayload')).show();
+    } catch(e) {
+        alert('Erro: ' + e.message);
+    }
+}
+
+function mostrarResposta(encoded) {
+    try {
+        var txt = decodeURIComponent(encoded.replace(/\+/g, ' '));
+        // Verificar se é XML ou texto
+        if (txt.includes('<') && txt.includes('>')) {
+            var formatted = txt.replace(/></g, '>\n<').replace(/^\s+$/g, '');
+            document.getElementById('payloadContent').textContent = formatted;
+        } else {
+            document.getElementById('payloadContent').textContent = txt;
+        }
+        document.querySelector('.modal-header h5').textContent = 'Resposta da API';
+        new bootstrap.Modal(document.getElementById('modalPayload')).show();
+    } catch(e) {
+        alert('Erro: ' + e.message);
+    }
+}
+</script>
+{% endblock %}

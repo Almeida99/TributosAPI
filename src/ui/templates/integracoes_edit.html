@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="mb-0">Editar Integração</h4>
+        <code class="text-muted">{{ i.nome }}</code>
+      </div>
+      <a href="/integracoes?usr_cod={{ usr_cod }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar
+      </a>
+    </div>
+
+    <form method="post" action="/integracoes/{{ i.id }}/editar?usr_cod={{ usr_cod }}">
+      
+      <!-- SEÇÃO 1: Identificação -->
+
+      
+      <!-- SEÇÃO 1: Identificação -->
+      <div class="card mb-3 shadow-sm border-0">
+        <div class="card-header fw-bold bg-primary text-white" style="border-radius: 12px 12px 0 0;">
+          <i class="bi bi-info-circle me-1"></i> Identificação
+        </div>
+        <div class="card-body border rounded-bottom-4">
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label">Nome do endpoint <span class="text-danger">*</span></label>
+              <input class="form-control" name="nome_endpoint" required value="{{ i.nome }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Tipo <span class="text-danger">*</span></label>
+              <select class="form-select" name="tipo_integracao">
+                <option value="ENDPOINT" {% if i.tipo_integracao == 'ENDPOINT' %}selected{% endif %}>Endpoint HTTP (REST/SOAP)</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Ativo</label>
+              <select class="form-select" name="ativo">
+                <option value="1" {% if i.ativo %}selected{% endif %}>Sim</option>
+                <option value="0" {% if not i.ativo %}selected{% endif %}>Não</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Descrição</label>
+              <input class="form-control" name="descricao" value="{{ i.descricao or '' }}" placeholder="Para que serve esta integração?">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Banco de Dados de Origem</label>
+              <select class="form-select" name="id_conexao">
+                {% for c in conns %}
+                  <option value="{{ c.id }}" {% if c.id == i.id_conexao %}selected{% endif %}>{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO 2: Autenticação -->
+      <div class="card mb-3 shadow-sm border-0">
+        <div class="card-header fw-bold bg-warning text-dark" style="border-radius: 12px 12px 0 0;">
+          <i class="bi bi-key me-1"></i> Autenticação
+        </div>
+        <div class="card-body border rounded-bottom-4">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Login Necessário?</label>
+              <select class="form-select" name="login_necessario" id="loginNecessario" onchange="toggleLoginFields()">
+                <option value="1" {% if i.login_necessario == 1 %}selected{% endif %}>Sim</option>
+                <option value="0" {% if i.login_necessario == 0 %}selected{% endif %}>Não</option>
+              </select>
+            </div>
+            <div class="col-md-4" id="loginTipoDiv">
+              <label class="form-label">Tipo de Retorno do Login</label>
+              <select class="form-select" name="login_tipo">
+                <option value="TOKEN" {% if i.login_tipo == 'TOKEN' %}selected{% endif %}>Token (Bearer/Key)</option>
+                <option value="SESSAO" {% if i.login_tipo == 'SESSAO' %}selected{% endif %}>Sessão (Cookie/Session ID)</option>
+              </select>
+            </div>
+            <div class="col-md-4" id="tokenCacheDiv">
+              <label class="form-label">Usar Cache de Token?</label>
+              <select class="form-select" name="token_cache_enabled">
+                <option value="1" {% if i.token_cache_enabled == 1 %}selected{% endif %}>Sim - Reutilizar até expirar</option>
+                <option value="0" {% if i.token_cache_enabled == 0 %}selected{% endif %}>Não - Login a cada chamada</option>
+              </select>
+            </div>
+            <div class="col-md-4" id="tokenValidadeDiv">
+              <label class="form-label">Validade do Token (minutos)</label>
+              <input class="form-control" name="token_validade_minutos" value="{{ i.token_validade_minutos or 30 }}" type="number" min="1">
+            </div>
+            
+            <div class="col-12" id="loginPythonDiv">
+              <div class="d-flex justify-content-between align-items-end mb-1">
+                <label class="form-label mb-0">Código Python - Login <span class="text-danger">*</span></label>
+                <div class="d-flex gap-1">
+                  <select id="formato_login" class="form-select form-select-sm" style="width: auto;">
+                    <option value="JSON">JSON</option>
+                    <option value="XML">XML/SOAP</option>
+                  </select>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="preencherPadraoLogin()">
+                      <i class="bi bi-magic"></i> Padrão
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="corrigirComIA('loginPythonText', 'login')">
+                      <i class="bi bi-cpu"></i> Corrigir com IA
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <textarea class="form-control font-monospace" name="login_python" id="loginPythonText" rows="6" 
+                placeholder="# Digite seu código Python de login aqui...">{{ i.login_python or '' }}</textarea>
+              <div class="mt-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="testarLogin()">
+                  <i class="bi bi-play"></i> Testar Login
+                </button>
+                <span id="loginTestResult" class="ms-2 text-muted small"></span>
+              </div>
+              <div class="mt-2 p-2 bg-light rounded border-start border-4 border-info">
+                <small class="text-muted d-block"><i class="bi bi-info-circle me-1"></i> <b>Dica:</b> O campo <code>data</code> pode ser enviado em branco.</small>
+                <small class="text-muted d-block"><i class="bi bi-gear me-1"></i> <b>Content-Types:</b> JSON, XML, SOAP ou Form-UrlEncoded.</small>
+              </div>
+            </div>
+            
+            <div class="col-md-6" id="tokenFieldDiv">
+              <label class="form-label">Campo do Token no Retorno</label>
+              <input class="form-control" name="token_field" value="{{ i.token_field or 'token' }}" placeholder="token">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO 3: Envio -->
+      <div class="card mb-3 shadow-sm border-0">
+        <div class="card-header fw-bold bg-info text-white" style="border-radius: 12px 12px 0 0;">
+          <i class="bi bi-code-square me-1"></i> Envio de Dados
+        </div>
+        <div class="card-body border rounded-bottom-4">
+          <div class="alert alert-info mb-3">
+            <i class="bi bi-lightbulb me-1"></i>
+            <code>payload</code> = resultado da consulta SQL.<br>
+            <code>token</code> = token obtido no login (ou sessão).
+          </div>
+          
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="d-flex justify-content-between align-items-end mb-1">
+                <label class="form-label mb-0">Código Python - Envio <span class="text-danger">*</span></label>
+                <div class="d-flex gap-1">
+                  <select id="formato_envio" class="form-select form-select-sm" style="width: auto;">
+                    <option value="JSON">JSON</option>
+                    <option value="XML">XML/SOAP</option>
+                  </select>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="preencherPadraoEnvio()">
+                      <i class="bi bi-magic"></i> Padrão
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="corrigirComIA('envioPythonText', 'envio')">
+                      <i class="bi bi-cpu"></i> Corrigir com IA
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <textarea class="form-control font-monospace" name="envio_python" id="envioPythonText" rows="8" 
+                placeholder="# Digite seu código Python de envio aqui...">{{ i.envio_python or '' }}</textarea>
+              <div class="mt-2 p-2 bg-light rounded border-start border-4 border-primary">
+                <small class="text-muted d-block"><i class="bi bi-check-circle me-1"></i> Retorne <code>resultado = {'status': 200, 'response': '...'}</code></small>
+                <small class="text-muted d-block"><i class="bi bi-file-earmark-code me-1"></i> Suporte nativo a protocolos JSON e XML/SOAP.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO 4: Dados / SQL -->
+      <div class="card mb-3 shadow-sm border-0">
+        <div class="card-header fw-bold bg-secondary text-white" style="border-radius: 12px 12px 0 0;">
+          <i class="bi bi-database me-1"></i> Dados de Origem
+        </div>
+        <div class="card-body border rounded-bottom-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Consulta SQL</label>
+              <textarea class="form-control font-monospace bg-light" name="consulta_sql" rows="3" 
+                placeholder="SELECT dbo.fn_gerar_payload(id, ...) AS payload_xml FROM tabela WHERE id = {valor}">{{ i.consulta_sql or '' }}</textarea>
+              <small class="text-muted">O resultado será passado para a variável <code>payload</code></small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO 5: Ações Automáticas -->
+      <div class="card mb-3 shadow-sm border-0">
+        <div class="card-header fw-bold bg-dark text-white" style="border-radius: 12px 12px 0 0;">
+          <i class="bi bi-play-circle me-1"></i> Scripts de Banco (Pre/Pos)
+        </div>
+        <div class="card-body border rounded-bottom-4">
+          <div class="row g-3">
+             <div class="col-12">
+               <label class="form-label">Script Pós-Execução (SQL ou Python)</label>
+               <textarea class="form-control font-monospace" name="script_pos_exec" rows="3" placeholder="-- SQL ou Python executado APÓS o sucesso do envio">{{ i.script_pos_exec or '' }}</textarea>
+               <small class="text-muted">Executado após o retorno de sucesso (2xx).</small>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3 mb-5">
+        <button class="btn btn-primary px-5" type="submit">
+          <i class="bi bi-save me-1"></i> Salvar Alterações
+        </button>
+        <a href="/integracoes/{{ i.nome }}/testar?usr_cod={{ usr_cod }}" class="btn btn-success px-3">
+          <i class="bi bi-play me-1"></i> Ir para Testes
+        </a>
+        <a class="btn btn-outline-secondary" href="/integracoes?usr_cod={{ usr_cod }}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleLoginFields() {
+    const necessario = document.getElementById('loginNecessario').value;
+    const show = necessario === '1';
+    
+    document.getElementById('loginPythonDiv').style.display = show ? '' : 'none';
+    document.getElementById('loginTipoDiv').style.display = show ? '' : 'none';
+    document.getElementById('tokenCacheDiv').style.display = show ? '' : 'none';
+    document.getElementById('tokenValidadeDiv').style.display = show ? '' : 'none';
+    document.getElementById('tokenFieldDiv').style.display = show ? '' : 'none';
+}
+
+function preencherPadraoLogin() {
+    const el = document.getElementById('loginPythonText');
+    const formato = document.getElementById('formato_login').value;
+    
+    if(!el.value || confirm('Substituir o código atual pelo padrão sugerido?')) {
+        if (formato === 'JSON') {
+            el.value = `# Configuração do Login (JSON)
+url = 'https://api.exemplo.com/login'
+headers = {'Content-Type': 'application/json'}
+payload = {'usuario': '...', 'senha': '...'}
+
+# Execução
+resp = http_post(url, json_data=payload, headers=headers)
+
+# Extração (JSON)
+import json
+data = json.loads(resp.get('text', '{}'))
+token = data.get('token')
+
+# Retorno Obrigatório
+resultado = {'token': token}`;
+        } else {
+            el.value = `# Configuração do Login (XML/SOAP)
+url = 'https://api.exemplo.com/soap'
+headers = {'Content-Type': 'text/xml; charset=utf-8'}
+xml = """<soapenv:Envelope ...>
+   <soapenv:Body>
+      <login>...</login>
+   </soapenv:Body>
+</soapenv:Envelope>"""
+
+# Execução
+resp = http_post(url, data=xml, headers=headers)
+
+# Extração (XML)
+token = extrair_xml(resp.get('text', ''), 'token')
+
+# Retorno Obrigatório
+resultado = {'token': token}`;
+        }
+    }
+}
+
+function preencherPadraoEnvio() {
+    const el = document.getElementById('envioPythonText');
+    const formato = document.getElementById('formato_envio').value;
+    
+    if(!el.value || confirm('Substituir o código atual pelo padrão sugerido?')) {
+        if (formato === 'JSON') {
+            el.value = `# Configuração do Envio (JSON)
+url = 'https://api.exemplo.com/enviar'
+headers = {'Content-Type': 'application/json'}
+
+# O 'payload' vem da consulta SQL (já deve estar em formato JSON string)
+payload_envio = (payload or '').replace('{token}', token)
+
+# Execução
+resp = http_post(url, data=payload_envio, headers=headers)
+
+# Retorno Obrigatório
+resultado = {
+    'status': resp.get('status', 500), 
+    'response': resp.get('text', '')
+}`;
+        } else {
+            el.value = `# Configuração do Envio (XML/SOAP)
+url = 'https://api.exemplo.com/soap'
+headers = {'Content-Type': 'text/xml; charset=utf-8'}
+
+# O 'payload' vem da consulta SQL (já deve estar em formato XML string)
+payload_envio = (payload or '').replace('{token}', token)
+
+# Execução
+resp = http_post(url, data=payload_envio, headers=headers)
+
+# Retorno Obrigatório
+resultado = {
+    'status': resp.get('status', 500), 
+    'response': resp.get('text', '')
+}`;
+        }
+    }
+}
+
+async function testarLogin() {
+    const code = document.getElementById('loginPythonText').value;
+    const resultSpan = document.getElementById('loginTestResult');
+    resultSpan.textContent = 'Executando...';
+    resultSpan.className = 'ms-2 text-info';
+    
+    try {
+        const resp = await fetch('/api/v1/testar-login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({login_python: code})
+        });
+        const data = await resp.json();
+        
+        if (data.sucesso) {
+            resultSpan.textContent = '✓ Login OK! Token: ' + (data.token || '').substring(0, 20) + '...';
+            resultSpan.className = 'ms-2 text-success';
+        } else {
+            resultSpan.textContent = '✗ Erro: ' + (data.erro || 'Falha no login');
+            resultSpan.className = 'ms-2 text-danger';
+        }
+    } catch(e) {
+        resultSpan.textContent = '✗ Erro: ' + e.message;
+        resultSpan.className = 'ms-2 text-danger';
+    }
+}
+
+async function corrigirComIA(id, context) {
+    const el = document.getElementById(id);
+    const code = el.value;
+    if (!code) return alert("Digite algum código para corrigir.");
+    
+    const btn = event.target.closest('button');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
+    
+    try {
+        const prompt = `Ajuste o seguinte código Python para o padrão funcional do sistema TributosAPI (Modo: ${context}).
+        REGRAS:
+        1. Use http_post(url, data, headers), http_get(url, headers).
+        2. Retorne o resultado na variável 'resultado'.
+        3. Para login, 'resultado' deve ter a chave 'token'.
+        4. Para envio, 'resultado' deve ter 'status' e 'response'.
+        5. Use 'extrair_xml(xml, tag)' se necessário.
+        6. Retorne APENAS o código Python limpo, sem explicações.
+        7. JAMAIS use as palavras 'async', 'await' ou 'asyncio.run'. Use apenas as funções síncronas fornecidas.
+        
+        CÓDIGO ATUAL:
+        ${code}`;
+
+        const resp = await fetch('/api/v1/gemini/analisar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({snippet: prompt, context: context})
+        });
+        const data = await resp.json();
+        
+        if (data.analise) {
+            // Limpar blocos de markdown se virem
+            let cleaned = data.analise.replace(/```python/g, '').replace(/```/g, '').trim();
+            el.value = cleaned;
+        }
+    } catch(e) {
+        alert("Erro ao corrigir: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+function toggleLoginFields() {
+    const necValue = document.getElementById('loginNecessario').value;
+    const hasCode = document.getElementById('loginPythonText').value.trim().length > 0;
+    const nec = (necValue === '1' || hasCode);
+    
+    // Se tem código mas está marcado como 'Não', avisa visualmente ou apenas mostra
+    const divIds = ['loginTipoDiv', 'tokenCacheDiv', 'tokenValidadeDiv', 'loginPythonDiv', 'tokenFieldDiv'];
+    divIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = nec ? 'block' : 'none';
+    });
+}
+
+// Inicializa a visibilidade dos campos ao carregar
+toggleLoginFields();
+</script>
+{% endblock %}

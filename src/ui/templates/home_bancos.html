@@ -1,0 +1,50 @@
+{% extends "base_modern.html" %}
+{% block title %}Selecionar Banco{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-8">
+        <div class="text-center mb-4">
+            <h1 class="fw-bold" style="font-family: 'Outfit';">TributosAPI</h1>
+            <p class="text-muted">Selecione o banco (município) ou configure conexões.</p>
+            {% if erro == 'banco_invalido' %}
+            <div class="alert alert-warning">Banco informado na URL não existe ou está inválido.</div>
+            {% endif %}
+        </div>
+
+        <div class="d-flex justify-content-end mb-3">
+            <a href="/config/bancos" class="btn btn-outline-primary">
+                <i class="bi bi-gear me-1"></i> Configurar bancos
+            </a>
+        </div>
+
+        <div class="row g-3">
+            {% for b in bancos %}
+            <div class="col-md-6">
+                <a href="/{{ b.slug }}/integracoes{{ ('?usr_cod=' ~ usr_cod) if usr_cod else '' }}"
+                   class="text-decoration-none">
+                    <div class="glass-card p-4 h-100 shadow-sm border-0 hover-lift">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-primary rounded-3 p-3 text-white">
+                                <i class="bi bi-database fs-4"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ b.nome }}</div>
+                                <div class="small text-muted"><code>/{{ b.slug }}/</code> · {{ b.database }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    Nenhum banco cadastrado.
+                    <a href="/config/bancos/novo">Cadastre o primeiro banco</a>.
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

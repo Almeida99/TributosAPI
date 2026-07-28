@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Tokens Gemini</h4>
+    <a class="btn btn-sm btn-primary" href="/tokens/novo?usr_cod={{ usr_cod }}">Novo token</a>
+  </div>
+
+  <div class="table-responsive bg-white border rounded">
+    <table class="table table-sm table-striped mb-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Modelo</th>
+          <th>Ativo</th>
+          <th>Último uso</th>
+          <th>Uso</th>
+          <th>Chave</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for t in tokens %}
+        <tr>
+          <td>{{ t.id }}</td>
+          <td><code>{{ t.modelo }}</code></td>
+          <td>
+            {% if t.ativo %}
+              <span class="badge text-bg-success">Sim</span>
+            {% else %}
+              <span class="badge text-bg-secondary">Não</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">{{ t.ultimo_uso }}</td>
+          <td>{{ t.uso_count }}</td>
+          <td><code>{{ t.key_prefix }}</code></td>
+          <td class="text-end">
+            <div class="d-flex justify-content-end gap-2">
+                <form method="post" action="/tokens/{{ t.id }}/toggle?usr_cod={{ usr_cod }}">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Alternar</button>
+                </form>
+                <form method="post" action="/tokens/{{ t.id }}/delete?usr_cod={{ usr_cod }}" onsubmit="return confirm('Tem certeza que deseja remover este token?')">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Remover</button>
+                </form>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      {% if not tokens %}
+        <tr><td colspan="7" class="text-muted p-3">Nenhum token cadastrado.</td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+

@@ -1,0 +1,41 @@
+{% extends "base_modern.html" %}
+
+{% block title %}{{ 'Editar' if t else 'Novo' }} Token Gemini{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2 class="fw-bold m-0" style="font-family: 'Outfit';">{{ 'Editar' if t else 'Novo' }} Token Gemini</h2>
+    </div>
+    <div class="col-auto">
+        <a href="{{ bp }}/gemini?usr_cod={{ usr_cod }}" class="btn btn-secondary-glass">Cancelar</a>
+    </div>
+</div>
+
+<form action="{{ bp }}/gemini/salvar?usr_cod={{ usr_cod }}" method="post" class="glass-card p-4 shadow" style="max-width: 600px;">
+    <input type="hidden" name="id_token" value="{{ t.id_token or '' }}">
+    
+    <div class="mb-3">
+        <label class="form-label fw-bold">API Key <span class="text-danger">*</span></label>
+        <input type="text" name="api_key" class="form-control" value="{{ t.api_key or '' }}" required placeholder="Cole a API Key aqui...">
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label fw-bold">Modelo</label>
+        <input type="text" name="modelo" class="form-control" value="{{ t.modelo or 'gemini-1.5-flash' }}" placeholder="gemini-1.5-flash">
+        <div class="form-text">Ex: gemini-1.5-flash, gemini-1.5-pro, etc.</div>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label fw-bold">Status</label>
+        <select name="ativo" class="form-select">
+            <option value="1" {{ 'selected' if t.ativo != 0 }}>ATIVO</option>
+            <option value="0" {{ 'selected' if t.ativo == 0 }}>INATIVO</option>
+        </select>
+    </div>
+    
+    <button type="submit" class="btn btn-premium">
+        <i class="bi bi-save me-2"></i> Salvar
+    </button>
+</form>
+{% endblock %}

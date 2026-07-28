@@ -1,0 +1,67 @@
+{% extends "base_modern.html" %}
+
+{% block title %}Tokens Gemini{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2 class="fw-bold m-0" style="font-family: 'Outfit';">Tokens Google Gemini</h2>
+        <p class="text-muted">Gerencie múltiplos tokens para alternar automaticamente</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ bp }}/gemini/novo?usr_cod={{ usr_cod }}" class="btn btn-premium px-4">
+            <i class="bi bi-plus-lg me-2"></i> Novo Token
+        </a>
+    </div>
+</div>
+
+<div class="glass-card p-0 overflow-hidden shadow-lg border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-dark text-white opacity-90">
+                <tr>
+                    <th class="ps-4 py-3">ID</th>
+                    <th>Modelo</th>
+                    <th>API Key</th>
+                    <th>Usos</th>
+                    <th>Último Uso</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="bg-transparent">
+                {% if tokens %}
+                    {% for t in tokens %}
+                    <tr>
+                        <td class="ps-4"><span class="badge bg-secondary">{{ t.id_token }}</span></td>
+                        <td><code>{{ t.modelo }}</code></td>
+                        <td><span class="text-truncate d-inline-block" style="max-width: 200px;">{{ t.api_key[:30] }}...</span></td>
+                        <td>{{ t.uso_count or 0 }}</td>
+                        <td>{{ t.ultimo_uso or '-' }}</td>
+                        <td>
+                            {% if t.ativo %}
+                                <span class="badge bg-success">ATIVO</span>
+                            {% else %}
+                                <span class="badge bg-secondary">INATIVO</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ bp }}/gemini/{{ t.id_token }}/excluir?usr_cod={{ usr_cod }}" class="btn btn-sm btn-danger" onclick="return confirm('Excluir token?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <p class="text-muted">Nenhum token cadastrado</p>
+                            <a href="{{ bp }}/gemini/novo?usr_cod={{ usr_cod }}" class="btn btn-primary">Adicionar Token</a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Runtime / logs
+logs/
+*.log
+
+# Scratch e backups locais
+scratch/
+database/*.bkp
+
+# Catálogo com credenciais (mantém pasta via data/.gitignore)
+# data/bancos.json já ignorado em data/.gitignore

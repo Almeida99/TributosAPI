@@ -1,0 +1,1 @@
+# rotas do módulo terceiros

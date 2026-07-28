@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <div class="card border-0 shadow-sm" style="border-radius: 15px;">
+            <div class="card-body p-5">
+                <div class="text-center mb-5">
+                    <div class="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
+                        <i class="bi bi-book fs-1 text-info"></i>
+                    </div>
+                    <h2 class="fw-bold">Guia de Configuração e Uso</h2>
+                    <p class="text-muted">Como gerenciar suas integrações no TributosAPI</p>
+                </div>
+
+                <div class="accordion accordion-flush" id="accordionGuia">
+                    
+                    <!-- Item 1: Comandos Python (Novo) -->
+                    <div class="accordion-item mb-3 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button fw-bold text-success" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePython">
+                                <i class="bi bi-code-slash me-2"></i> Dicionário de Comandos Python (Integrações)
+                            </button>
+                        </h2>
+                        <div id="collapsePython" class="accordion-collapse collapse show" data-bs-parent="#accordionGuia">
+                            <div class="accordion-body">
+                                <p>Abaixo estão as funções exclusivas disponíveis para uso nos scripts Python de integração:</p>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle small">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 200px;">Função</th>
+                                                <th>Descrição</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code>executar_consulta(sql, params)</code></td>
+                                                <td>Executa um <strong>SELECT</strong> no banco e retorna uma lista de registros (dicionários).</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>executar_insert(sql, params)</code></td>
+                                                <td>Executa um <strong>INSERT</strong>. Realiza commit automático e retorna o número de linhas inseridas.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>executar_update(sql, params)</code></td>
+                                                <td>Executa um <strong>UPDATE</strong>. Exige a cláusula <code>WHERE</code> por segurança. Retorna linhas afetadas.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>executar_delete(sql, params)</code></td>
+                                                <td>Executa um <strong>DELETE</strong>. Exige a cláusula <code>WHERE</code> por segurança. Retorna linhas deletadas.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>http_post(url, data, headers)</code></td>
+                                                <td>Envia uma requisição POST para uma API. Retorna <code>{"status": int, "text": str}</code>.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code>http_get(url, headers)</code></td>
+                                                <td>Envia uma requisição GET para uma API. Retorna status e conteúdo textual.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="alert alert-warning py-2 mt-2 small">
+                                    <strong>Importante:</strong> Comandos como <code>DROP</code>, <code>ALTER</code> e <code>TRUNCATE</code> são bloqueados por segurança.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 2: Autenticação Dinâmica -->
+                    <div class="accordion-item mb-3 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                <i class="bi bi-shield-lock me-2"></i> Como configurar o Token Automático (Sessão)
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionGuia">
+                            <div class="accordion-body">
+                                <p>Esta configuração é utilizada para APIs que exigem uma chamada de login prévia para gerar um token de acesso que será usado na requisição principal.</p>
+                                <ul>
+                                    <li><strong>Extração de Token:</strong> O sistema utiliza o <code>token_pattern</code> para capturar o valor retornado. 
+                                        <em>Ex:</em> <code>&lt;token&gt;(.*?)&lt;/token&gt;</code>.</li>
+                                    <li><strong>Injeção:</strong> Utilize o marcador <code>{token}</code> em qualquer lugar do script para injetar o valor capturado.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 3: Gemini assistant -->
+                    <div class="accordion-item mb-3 border rounded">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                <i class="bi bi-robot me-2"></i> Usando o Assistente de IA
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionGuia">
+                            <div class="accordion-body">
+                                <p>O assistente Gemini no canto inferior direito pode:</p>
+                                <ul>
+                                    <li><strong>Analisar Erros:</strong> Na tela de Logs, clique em "Resumir com IA" para entender falhas técnicas.</li>
+                                    <li><strong>Ajustar Scripts:</strong> Na tela de edição, você pode pedir para a IA reescrever partes do código ou corrigir queries SQL.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 text-center">
+                    <a href="/?usr_cod={{ usr_cod }}" class="btn btn-primary px-4">Voltar ao Início</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

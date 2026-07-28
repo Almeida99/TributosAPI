@@ -1,0 +1,105 @@
+{% extends "base_modern.html" %}
+
+{% block title %}Permissões - {{ terceiro.login }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4 animate__animated animate__fadeInDown">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ bp }}/terceiros?usr_cod={{ usr_cod }}">Gestão de Terceiros</a></li>
+                <li class="breadcrumb-item active">{{ terceiro.login }}</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold" style="font-family: 'Outfit'; letter-spacing: -1px;">
+            <i class="bi bi-shield-lock-fill text-info me-2"></i>Endpoints Permitidos
+        </h2>
+        <p class="text-muted">Selecione quais integrações o usuário <strong>{{ terceiro.login }}</strong> pode chamar.</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- ADICIONAR NOVO -->
+    <div class="col-lg-4">
+        <div class="glass-card p-4 animate__animated animate__fadeInLeft">
+            <h5 class="fw-bold mb-4">Adicionar Integração</h5>
+            <form action="{{ bp }}/terceiros/{{ terceiro.id_cadastro }}/endpoints/adicionar?usr_cod={{ usr_cod }}" method="POST">
+                <div class="mb-4">
+                    <label class="form-label small text-uppercase fw-bold opacity-75">Pesquisar Integração</label>
+                    <input type="text" id="filterIntegracao" class="form-control mb-2 bg-light border-0" placeholder="Digite para filtrar..." onkeyup="filtrarOpcoes()">
+                    
+                    <label class="form-label small text-uppercase fw-bold opacity-75 mt-2">Selecionar Integração</label>
+                    <select name="nome_integracao" id="selectIntegracao" class="form-select bg-light border-0 py-2" required size="5">
+                        <option value="">Selecione...</option>
+                        {% for i in integracoes %}
+                        <option value="{{ i.nome_integracao }}">{{ i.nome }} ({{ i.nome_integracao }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-info w-100 py-3 text-white fw-bold" style="border-radius: 12px;">
+                    <i class="bi bi-plus-circle-fill me-2"></i>Liberar Acesso
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- LISTA ATUAL -->
+    <div class="col-lg-8">
+        <div class="glass-card p-0 overflow-hidden animate__animated animate__fadeInRight">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Integração</th>
+                        <th>Data Liberação</th>
+                        <th class="text-end pe-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in permitidos %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="badge bg-info-subtle text-info px-2 py-1 me-2">{{ p.nome_integracao }}</span>
+                        </td>
+                        <td class="text-muted small">{{ p.data_criacao }}</td>
+                        <td class="text-end pe-4">
+                            <a href="{{ bp }}/terceiros/{{ terceiro.id_cadastro }}/endpoints/{{ p.id_endpoint }}/excluir?usr_cod={{ usr_cod }}" 
+                               class="btn btn-sm btn-outline-danger" onclick="return confirm('Revogar acesso a esta integração?')">
+                                <i class="bi bi-trash-fill"></i> Revogar
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not permitidos %}
+                    <tr>
+                        <td colspan="3" class="text-center py-5 text-muted">
+                            Nenhum endpoint liberado para este usuário.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filtrarOpcoes() {
+    const input = document.getElementById("filterIntegracao");
+    const filter = input.value.toUpperCase();
+    const select = document.getElementById("selectIntegracao");
+    const options = select.getElementsByTagName("option");
+
+    for (let i = 0; i < options.length; i++) {
+        if (options[i].value === "") continue;
+        const txtValue = options[i].textContent || options[i].innerText;
+        if (txtValue.toUpperCase().indexOf(filter) > -1) {
+            options[i].style.display = "";
+        } else {
+            options[i].style.display = "none";
+        }
+    }
+}
+</script>
+{% endblock %}

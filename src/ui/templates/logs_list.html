@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>Logs de Integração</h4>
+  <button class="btn btn-sm btn-info text-white" onclick="resumirTodosLogs()">
+    <i class="bi bi-magic"></i> Resumir com IA
+  </button>
+</div>
+
+<div class="table-responsive bg-white border rounded shadow-sm">
+  <table class="table table-sm table-striped mb-0" style="font-size: 0.85rem;">
+    <thead class="table-light">
+      <tr>
+        <th>Data</th>
+        <th>Usuário</th>
+        <th>Integração</th>
+        <th>Status</th>
+        <th>Janela (Início/Fim)</th>
+        <th>Duração</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for log in logs %}
+      <tr>
+        <td class="text-nowrap">{{ log.data.strftime('%d/%m/%Y %H:%M:%S') if log.data else '-' }}</td>
+        <td><span class="badge bg-secondary">{{ log.usuario }}</span></td>
+        <td><strong>{{ log.nome }}</strong></td>
+        <td>
+          {% if log.sucesso %}
+            <span class="badge bg-success">{{ log.status or 'OK' }}</span>
+          {% else %}
+            <span class="badge bg-danger">{{ log.status or 'ERRO' }}</span>
+          {% endif %}
+        </td>
+        <td class="text-muted" style="font-size: 0.75rem;">
+            {{ log.inicio.strftime('%H:%M:%S') if log.inicio else '-' }} -> 
+            {{ log.fim.strftime('%H:%M:%S') if log.fim else '-' }}
+        </td>
+        <td class="text-muted">{{ log.duracao }}ms</td>
+        <td>
+          <button class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" 
+                  onclick="showLogDetails('{{ log.nome }}', '{{ log.status }}', `{{ log.payload | replace('`', '\\`') }}`, `{{ log.resposta | replace('`', '\\`') }}`, `{{ log.sql | replace('`', '\\`') }}`, `{{ log.params | replace('`', '\\`') }}`, `{{ log.erro | replace('`', '\\`') }}`, `{{ log.ai | replace('`', '\\`') }}`)">
+            Detalhes
+          </button>
+        </td>
+      </tr>
+    {% endfor %}
+    {% if not logs %}
+      <tr><td colspan="7" class="text-center text-muted p-5">Nenhum log encontrado.</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal de Detalhes -->
+<div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header d-flex justify-content-between align-items-center">
+        <h5 class="modal-title" id="logModalTitle">Detalhes do Log</h5>
+        <div class="d-flex gap-2">
+            <button id="btnGeminiAnalise" class="btn btn-sm btn-outline-info" onclick="analisarComGemini()">
+                <i class="bi bi-robot"></i> Forçar Re-analisar
+            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="modal-body bg-light">
+        <!-- Erro (se houver) -->
+        <div id="divErro" class="alert alert-danger d-none" role="alert">
+            <strong>Erro Técnico:</strong> <span id="modalErro"></span>
+        </div>
+
+        <!-- Área de Análise Gemini (Ja gravada ou nova) -->
+        <div id="geminiOutput" class="alert alert-info d-none border-info shadow-sm">
+            <h6 class="fw-bold border-bottom pb-1 mb-2"><i class="bi bi-magic"></i> Insight do Gemini</h6>
+            <div id="geminiText" style="white-space: pre-wrap; font-size: 0.9rem;"></div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold mb-1">Payload Enviado:</label>
+                <pre id="modalPayload" class="bg-white border rounded p-3 font-monospace" style="max-height: 250px; font-size: 0.85rem; overflow: auto;"></pre>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="fw-bold mb-1">Resposta da API:</label>
+                <pre id="modalResponse" class="bg-white border rounded p-3 font-monospace" style="max-height: 250px; font-size: 0.85rem; overflow: auto;"></pre>
+            </div>
+        </div>
+
+        <div class="mb-2">
+            <label class="fw-bold mb-1">Consulta SQL:</label>
+            <pre id="modalSQL" class="bg-white border rounded p-2 font-monospace text-primary" style="font-size: 0.8rem;"></pre>
+        </div>
+
+        <div class="mb-2">
+            <label class="fw-bold mb-1">Parâmetros:</label>
+            <code id="modalParams" class="bg-white border rounded p-2 d-block"></code>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showLogDetails(nome, status, payload, resposta, sql, params, erro, ai) {
+    document.getElementById('logModalTitle').innerText = 'Log: ' + nome + ' (Status: ' + status + ')';
+    document.getElementById('modalPayload').innerText = payload || '(Vazio)';
+    document.getElementById('modalResponse').innerText = resposta || '(Vazio)';
+    document.getElementById('modalSQL').innerText = sql || '(Não informado)';
+    document.getElementById('modalParams').innerText = params || '{}';
+    document.getElementById('modalErro').innerText = erro || '';
+    
+    // Mostrar/esconder erro
+    if (erro && erro !== 'None' && erro !== '') {
+        document.getElementById('divErro').classList.remove('d-none');
+    } else {
+        document.getElementById('divErro').classList.add('d-none');
+    }
+
+    // Se já tiver análise AI gravada, mostra
+    const outputDiv = document.getElementById('geminiOutput');
+    const outputText = document.getElementById('geminiText');
+    if (ai && ai !== 'None' && ai !== '') {
+        outputDiv.classList.remove('d-none');
+        outputText.innerText = ai;
+    } else {
+        outputDiv.classList.add('d-none');
+    }
+
+    document.getElementById('btnGeminiAnalise').disabled = false;
+    document.getElementById('btnGeminiAnalise').innerHTML = '<i class="bi bi-robot"></i> Re-analisar';
+    
+    var myModal = new bootstrap.Modal(document.getElementById('logModal'));
+    myModal.show();
+}
+
+async function resumirTodosLogs() {
+    // Coleta as primeiras 20 linhas da tabela para contexto
+    const rows = document.querySelectorAll('tbody tr');
+    let logSummary = "";
+    rows.forEach((row, idx) => {
+        if (idx < 20) {
+            const cols = row.querySelectorAll('td');
+            if (cols.length > 3) {
+                logSummary += `[${cols[0].innerText}] ${cols[1].innerText} - Status: ${cols[2].innerText}\n`;
+            }
+        }
+    });
+
+    if (!logSummary) return;
+
+    // Abre o chat do gemini (base.html) e envia a pergunta
+    toggleGemini();
+    const input = document.getElementById('geminiInput');
+    input.value = "Pode fazer um resumo destes logs e me dizer o que está acontecendo?\n\n" + logSummary;
+    perguntarGemini();
+}
+
+async function analisarComGemini() {
+    const btn = document.getElementById('btnGeminiAnalise');
+    const outputDiv = document.getElementById('geminiOutput');
+    const outputText = document.getElementById('geminiText');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Analisando...';
+    
+    const payload = document.getElementById('modalPayload').innerText;
+    const resposta = document.getElementById('modalResponse').innerText;
+    const erro = document.getElementById('modalErro').innerText;
+    const sql = document.getElementById('modalSQL').innerText;
+
+    const prompt = `Analise este erro de integração e sugira uma solução:\n\nSQL: ${sql}\nErro: ${erro}\nPayload: ${payload}\nResposta: ${resposta}`;
+
+    try {
+        const response = await fetch('/api/v1/gemini/analisar?usr_cod={{ usr_cod }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ snippet: prompt })
+        });
+        const data = await response.json();
+        
+        outputDiv.classList.remove('d-none');
+        outputText.innerText = data.analise || 'Não foi possível analisar.';
+    } catch (e) {
+        alert('Erro ao chamar Gemini: ' + e);
+    } finally {
+        btn.innerHTML = 'Analisar com Gemini';
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

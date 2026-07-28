@@ -1,0 +1,94 @@
+{% extends "base_modern.html" %}
+{% block title %}Bancos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold m-0" style="font-family: 'Outfit';">
+            <i class="bi bi-database-gear text-primary me-2"></i> Bancos de Dados
+        </h2>
+        <p class="text-muted mb-0">Cada banco é acessado pelo path: <code>/{slug}/integracoes</code></p>
+    </div>
+    <a href="/config/bancos/novo" class="btn btn-premium shadow-sm px-4">
+        <i class="bi bi-plus-lg me-1"></i> Novo Banco
+    </a>
+</div>
+
+{% if msg %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {% if msg == 'salvo' %}Banco salvo com sucesso.
+    {% elif msg == 'salvo_schema_ok' %}Banco cadastrado e schema (tabelas V3) aplicado com sucesso.
+    {% elif msg == 'salvo_schema_erro' %}Banco cadastrado, mas falhou ao aplicar o schema. Verifique a conexão e os logs do servidor.
+    {% elif msg.startswith('ok_conexao_') %}Conexão testada com sucesso ({{ msg.replace('ok_conexao_', '') }}).
+    {% elif msg == 'excluido' %}Banco removido.
+    {% else %}{{ msg }}{% endif %}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+{% if erro %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ erro }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="glass-card shadow-sm border-0 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Slug (URL)</th>
+                    <th>Servidor</th>
+                    <th>Database</th>
+                    <th>Status</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bancos %}
+                <tr>
+                    <td class="fw-semibold">{{ b.nome }}</td>
+                    <td><code>/{{ b.slug }}/</code></td>
+                    <td class="small text-muted">{{ b.server }}</td>
+                    <td class="small">{{ b.database }}</td>
+                    <td>
+                        {% if b.ativo %}
+                        <span class="badge bg-success-subtle text-success">Ativo</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="/{{ b.slug }}/integracoes" class="btn btn-sm btn-outline-primary" title="Abrir painel">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                        <form action="/config/bancos/{{ b.slug }}/testar" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-info" title="Testar conexão">
+                                <i class="bi bi-plug"></i>
+                            </button>
+                        </form>
+                        <a href="/config/bancos/{{ b.slug }}/editar" class="btn btn-sm btn-outline-secondary" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="/config/bancos/{{ b.slug }}/excluir?confirm=1"
+                           class="btn btn-sm btn-outline-danger"
+                           title="Excluir"
+                           onclick="return confirm('Excluir o banco {{ b.slug }}? Esta ação não apaga dados no SQL Server.')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        Nenhum banco cadastrado.
+                        <a href="/config/bancos/novo">Cadastre o primeiro</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

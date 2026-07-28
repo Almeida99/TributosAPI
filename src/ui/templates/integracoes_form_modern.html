@@ -1,0 +1,172 @@
+{% extends "base_modern.html" %}
+
+{% block title %}{{ 'Editar' if is_edit else 'Nova' }} Integração{% endblock %}
+
+{% block content %}
+<form action="{{ bp }}/integracoes/salvar?usr_cod={{ usr_cod }}" method="post" id="mainForm">
+    <input type="hidden" name="id_integracao" value="{{ i.id_integracao }}">
+    
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h2 class="fw-bold m-0" style="font-family: 'Outfit';"> Configuração de Fluxo (V3)</h2>
+            <p class="text-muted">ID: {{ i.id_integracao or 'Novo' }} • Schema Modernizado</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ bp }}/integracoes?usr_cod={{ usr_cod }}" class="btn btn-secondary-glass me-2">Cancelar</a>
+            <button type="submit" class="btn btn-premium px-4">
+                <i class="bi bi-send-check me-2"></i> Gravar Alterações
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Esquerda: Identificação e SQL -->
+        <div class="col-lg-7">
+            <div class="glass-card p-4 mb-4 shadow">
+                <div class="section-header">
+                    <h5 class="fw-bold mb-0 text-primary">Identificação & Dados de Origem</h5>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small text-muted">NOME DO ENDPOINT <span class="text-danger">*</span></label>
+                        <input type="text" name="nome" class="form-control form-control-lg fw-bold" value="{{ i.nome or '' }}" required placeholder="Ex: Sincronização Cenprot">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">STATUS</label>
+                        <select name="ativo" class="form-select">
+                            <option value="1" {{ 'selected' if i.ativo != 0 }}>ATIVO</option>
+                            <option value="0" {{ 'selected' if i.ativo == 0 }}>INATIVO</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">DESCRIÇÃO CURTA</label>
+                        <input type="text" name="descricao" class="form-control" value="{{ i.descricao or '' }}" placeholder="Descreva o propósito desta integração...">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">BANCO DE DADOS DE ORIGEM <span class="text-danger">*</span></label>
+                        <select name="id_conexao" class="form-select mb-2" required>
+                            <option value="">Selecione uma conexão cadastrada...</option>
+                            {% for c in conns %}
+                                <option value="{{ c.id_conexao }}" {{ 'selected' if i.id_conexao == c.id_conexao }}>{{ c.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">CONSULTA SQL DE EXTRAÇÃO</label>
+                        <textarea name="consulta_sql" class="form-control code-editor" rows="6" placeholder="SELECT top 10 * FROM view_dados WHERE status = 'A'...">{{ i.consulta_sql or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 shadow">
+                <div class="section-header">
+                    <h5 class="fw-bold mb-0 text-info">Payload (Estrutura do JSON/XML)</h5>
+                </div>
+                <textarea name="payload_layout" class="form-control code-editor" rows="10" placeholder='{ "id": "{id}", "info": "{algum_campo}" }'>{{ i.payload_layout or '' }}</textarea>
+                <div class="mt-2 text-muted small p-2 bg-light rounded border">
+                    <i class="bi bi-info-circle-fill me-1"></i> Use chaves <code>{NOME_COLUNA}</code> para mapear os dados do seu SQL.
+                </div>
+            </div>
+        </div>
+
+        <!-- Direita: API e Python -->
+        <div class="col-lg-5">
+            <div class="glass-card p-4 mb-4 shadow">
+                <div class="section-header">
+                    <h5 class="fw-bold mb-0 text-warning">Destino (API / Endpoint)</h5>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">TIPO</label>
+                        <select name="tipo_fluxo" class="form-select">
+                            <option value="REST" {{ 'selected' if i.tipo_fluxo == 'REST' }}>REST</option>
+                            <option value="SOAP" {{ 'selected' if i.tipo_fluxo == 'SOAP' }}>SOAP</option>
+                            <option value="PYTHON" {{ 'selected' if i.tipo_fluxo == 'PYTHON' }}>PYTHON PURO</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">MÉTODO</label>
+                        <select name="metodo_http" class="form-select">
+                            <option value="POST" {{ 'selected' if i.metodo_http == 'POST' }}>POST</option>
+                            <option value="GET" {{ 'selected' if i.metodo_http == 'GET' }}>GET</option>
+                            <option value="PUT" {{ 'selected' if i.metodo_http == 'PUT' }}>PUT</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">LOGIN?</label>
+                        <select name="login_necessario" class="form-select" id="loginCheck" onchange="toggleLogin()">
+                            <option value="1" {{ 'selected' if i.login_necessario == 1 }}>SIM</option>
+                            <option value="0" {{ 'selected' if i.login_necessario != 1 }}>NÃO</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">URL FINAL DO ENDPOINT</label>
+                        <input type="text" name="url_endpoint" class="form-control" value="{{ i.url_endpoint or '' }}" placeholder="https://api.destino.com.br/v2/enviar">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">CONTENT-TYPE</label>
+                        <input type="text" name="content_type" class="form-control" value="{{ i.content_type or 'application/json' }}">
+                    </div>
+                </div>
+            </div>
+
+            <div id="loginSection" class="{{ 'd-none' if i.login_necessario != 1 }}">
+                <div class="glass-card p-4 border-primary border-start border-4 mb-4 shadow">
+                    <div class="section-header">
+                        <h5 class="fw-bold mb-0 text-primary">Script de Login (Python)</h5>
+                    </div>
+                    <textarea name="script_login_py" id="script_login_py" class="form-control code-editor mb-3" rows="8" placeholder="# Implemente sua lógica de login e retorne o token...">{{ i.script_login_py or '' }}</textarea>
+                    <div class="btn-group w-100">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="corrigirIA('login')">
+                            <i class="bi bi-cpu me-1"></i> Gemini IA (Sugerir)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 border-success border-start border-4 shadow">
+                <div class="section-header">
+                    <h5 class="fw-bold mb-0 text-success">Lógica de Envio (Python Custom)</h5>
+                </div>
+                <textarea name="script_envio_py" class="form-control code-editor mb-3" rows="8" placeholder="# Sobrescreva o envio padrão se necessário...">{{ i.script_envio_py or '' }}</textarea>
+                <div class="text-muted small">
+                    <i class="bi bi-lightbulb me-1"></i> Deixe em branco para usar o envio <b>REST Padrão</b>.
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleLogin() {
+    const section = document.getElementById('loginSection');
+    const check = document.getElementById('loginCheck').value;
+    section.classList.toggle('d-none', check !== '1');
+}
+
+async function corrigirIA(tipo) {
+    const area = tipo === 'login' ? document.getElementById('script_login_py') : document.getElementsByName('script_envio_py')[0];
+    const btn = event.target;
+    
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Analisando...';
+    
+    try {
+        const resp = await fetch('{{ bp }}/api/v1/gemini/analisar', {
+            method: 'POST',
+            body: JSON.stringify({ snippet: area.value, context: tipo })
+        });
+        const data = await resp.json();
+        if (data.analise) area.value = data.analise;
+    } catch(e) {
+        alert("Erro na IA: " + e);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

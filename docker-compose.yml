@@ -1,0 +1,32 @@
+services:
+  tributariai_api:
+    build: .
+    container_name: tributariai_api_tx
+    ports:
+      - "9097:8000"
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./src:/app/src
+      - ./database:/app/database
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    restart: always
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+
+
+networks:
+  default:
+    name: tributos_network

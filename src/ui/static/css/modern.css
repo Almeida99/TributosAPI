@@ -1,0 +1,154 @@
+/* 
+   TRIBUTOS API V2 - DESIGN SYSTEM 
+   Modern, Premium, and Responsive
+*/
+
+:root {
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --secondary: #64748b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #06b6d4;
+    --dark: #0f172a;
+    --bg-main: #f8fafc;
+    --bg-card: rgba(255, 255, 255, 0.8);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --radius: 12px;
+}
+
+[data-theme="dark"] {
+    --bg-main: #020617;
+    --bg-card: rgba(30, 41, 59, 0.8);
+    --glass-bg: rgba(15, 23, 42, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    transition: background-color 0.3s ease;
+    background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+                      radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.05) 0px, transparent 50%);
+}
+
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+}
+
+.nav-glass {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+[data-theme="dark"] .nav-glass {
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.btn-premium {
+    background: linear-gradient(135deg, var(--primary), var(--info));
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    color: white;
+}
+
+.btn-secondary-glass {
+    background: var(--glass-border);
+    backdrop-filter: blur(4px);
+    color: var(--text-main);
+    border: 1px solid var(--glass-border);
+}
+
+.btn-secondary-glass:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-card);
+    color: var(--text-main);
+    padding: 0.6rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-xs {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.75rem;
+    border-radius: 0.2rem;
+}
+
+.form-control:focus, .form-select:focus {
+    background: var(--bg-card);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    color: var(--text-main);
+}
+
+.badge-status {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-active { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.badge-inactive { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+.code-editor {
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.9rem;
+    background: #1e1e1e !important;
+    color: #d4d4d4 !important;
+}
+
+.section-header {
+    border-left: 4px solid var(--primary);
+    padding-left: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-hover:hover {
+    transform: translateY(-4px);
+    transition: transform 0.3s ease;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade {
+    animation: fadeIn 0.4s ease forwards;
+}

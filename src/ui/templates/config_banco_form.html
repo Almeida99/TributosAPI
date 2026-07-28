@@ -1,0 +1,109 @@
+{% extends "base_modern.html" %}
+{% block title %}{{ 'Novo' if is_new else 'Editar' }} Banco{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold m-0" style="font-family: 'Outfit';">
+                <i class="bi bi-database-add text-primary me-2"></i>
+                {{ 'Novo Banco' if is_new else 'Editar Banco' }}
+            </h2>
+            <a href="/config/bancos" class="btn btn-secondary-glass">Voltar</a>
+        </div>
+
+        <form action="/config/bancos/salvar" method="post" class="glass-card p-4 shadow-sm border-0" id="formBanco">
+            {% if not is_new %}
+            <input type="hidden" name="slug_original" value="{{ slug_original or b.slug }}">
+            {% endif %}
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">NOME EXIBIÇÃO</label>
+                    <input type="text" name="nome" class="form-control form-control-lg bg-light border-0"
+                           value="{{ b.nome or '' }}" required placeholder="Ex: Lauro de Freitas">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">SLUG (PATH DA URL)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0">/</span>
+                        <input type="text" name="slug" class="form-control form-control-lg bg-light border-0"
+                               value="{{ b.slug or '' }}" required pattern="[a-z0-9][a-z0-9_-]{0,62}"
+                               placeholder="lauro" {% if not is_new %}{% endif %}>
+                        <span class="input-group-text bg-light border-0">/</span>
+                    </div>
+                    <div class="form-text">Somente minúsculas, números, hífen e underscore.</div>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label fw-bold small text-muted">SERVIDOR</label>
+                    <input type="text" name="server" class="form-control bg-light border-0"
+                           value="{{ b.server or '' }}" required placeholder="host,porta">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-muted">DATABASE</label>
+                    <input type="text" name="database" class="form-control bg-light border-0"
+                           value="{{ b.database or '' }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-muted">USUÁRIO</label>
+                    <input type="text" name="username" class="form-control bg-light border-0"
+                           value="{{ b.username or '' }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-muted">SENHA</label>
+                    <input type="password" name="password" class="form-control bg-light border-0"
+                           value="" placeholder="{{ 'Deixe em branco para manter' if not is_new else 'Senha' }}"
+                           {% if is_new %}required{% endif %}>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small text-muted">STATUS</label>
+                    <select name="ativo" class="form-select bg-light border-0">
+                        <option value="1" {{ 'selected' if b.ativo != False and b.ativo != 0 }}>Ativo</option>
+                        <option value="0" {{ 'selected' if b.ativo == False or b.ativo == 0 }}>Inativo</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small text-muted">DRIVER ODBC</label>
+                    <input type="text" name="driver" class="form-control bg-light border-0"
+                           value="{{ b.driver or 'ODBC Driver 18 for SQL Server' }}">
+                </div>
+            </div>
+
+            <div id="testResult" class="alert mt-3 d-none" role="alert"></div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-outline-info" id="btnTestar">
+                    <i class="bi bi-plug me-1"></i> Testar conexão
+                </button>
+                <button type="submit" class="btn btn-premium px-4">
+                    <i class="bi bi-save me-1"></i> Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('btnTestar').addEventListener('click', async () => {
+    const form = document.getElementById('formBanco');
+    const fd = new FormData(form);
+    const box = document.getElementById('testResult');
+    box.classList.remove('d-none', 'alert-success', 'alert-danger');
+    box.textContent = 'Testando...';
+    box.classList.add('alert-secondary');
+    try {
+        const res = await fetch('/config/bancos/testar-form', { method: 'POST', body: fd });
+        const data = await res.json();
+        box.classList.remove('alert-secondary');
+        box.classList.add(data.ok ? 'alert-success' : 'alert-danger');
+        box.textContent = data.mensagem || (data.ok ? 'OK' : 'Falha');
+    } catch (e) {
+        box.classList.remove('alert-secondary');
+        box.classList.add('alert-danger');
+        box.textContent = String(e);
+    }
+});
+</script>
+{% endblock %}

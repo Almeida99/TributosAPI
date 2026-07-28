@@ -1,0 +1,71 @@
+{% extends "base_modern.html" %}
+
+{% block title %}Novo Terceiro{% endblock %}
+
+{% block content %}
+<div class="row mb-4 animate__animated animate__fadeInDown">
+    <div class="col-md-12">
+        <h2 class="fw-bold" style="font-family: 'Outfit'; letter-spacing: -1px;">
+            <i class="bi bi-person-plus-fill text-primary me-2"></i>Novo Terceiro
+        </h2>
+        <p class="text-muted">Cadastre um novo login para acesso externo.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mx-auto">
+        <div class="glass-card p-5 animate__animated animate__fadeInUp">
+            <form action="{{ bp }}/terceiros/salvar?usr_cod={{ usr_cod }}" method="POST">
+                <input type="hidden" name="id_cadastro" value="{{ t.id_cadastro or '' }}">
+                
+                <div class="mb-4">
+                    <label class="form-label fw-bold small text-uppercase opacity-75">Login / Usuário</label>
+                    <input type="text" name="login" class="form-control form-control-lg bg-light border-0" value="{{ t.login or '' }}" required placeholder="ex: empresa_abc">
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold small text-uppercase opacity-75">Senha</label>
+                    <div class="input-group">
+                        <input type="text" name="senha" id="inputSenha" class="form-control form-control-lg bg-light border-0" {% if not t.id_cadastro %}required{% endif %} placeholder="Senha segura">
+                        <button class="btn btn-outline-secondary border-0 bg-light" type="button" onclick="gerarSenha()" title="Gerar Senha Segura">
+                            <i class="bi bi-key-fill text-primary"></i> Gerar
+                        </button>
+                    </div>
+                    {% if t.id_cadastro %}<small class="text-muted mt-2 d-block italic">Deixe vazio para manter a senha atual.</small>{% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold small text-uppercase opacity-75">Status</label>
+                    <select name="ativo" class="form-select form-select-lg bg-light border-0">
+                        <option value="1" {% if t.ativo != 0 %}selected{% endif %}>Ativo</option>
+                        <option value="0" {% if t.ativo == 0 %}selected{% endif %}>Bloqueado</option>
+                    </select>
+                </div>
+
+                <div class="d-grid gap-2 mt-5">
+                    <button type="submit" class="btn btn-primary btn-lg py-3 fw-bold" style="border-radius: 15px;">
+                        <i class="bi bi-check-circle-fill me-2"></i>Salvar Cadastro
+                    </button>
+                    <a href="{{ bp }}/terceiros?usr_cod={{ usr_cod }}" class="btn btn-link text-muted">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function gerarSenha() {
+    const length = 16;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+    let retVal = "";
+    const array = new Uint32Array(length);
+    window.crypto.getRandomValues(array);
+    for (let i = 0; i < length; i++) {
+        retVal += charset.charAt(array[i] % charset.length);
+    }
+    document.getElementById("inputSenha").value = retVal;
+}
+</script>
+{% endblock %}

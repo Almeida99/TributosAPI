@@ -1,0 +1,208 @@
+{% extends "base_modern.html" %}
+
+{% block title %}Editar Integração{% endblock %}
+
+{% block content %}
+<form action="{{ bp }}/integracoes/salvar?usr_cod={{ usr_cod }}" method="POST" id="formIntegracao">
+    <input type="hidden" name="id_integracao" value="{{ i.id_integracao or '' }}">
+    
+    <div class="row align-items-center mb-4 mt-2">
+        <div class="col">
+            <h2 class="fw-bold m-0" style="font-family: 'Outfit'; letter-spacing: -0.5px;">
+                <i class="bi bi-cpu-fill text-primary me-2"></i> {{ 'Editar' if i.id_integracao else 'Nova' }} Integração
+            </h2>
+            <p class="text-muted mb-0">ID: {{ i.id_integracao or 'Processo de Criação' }} • Configuração de Fluxo Python</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ bp }}/integracoes?usr_cod={{ usr_cod }}" class="btn btn-secondary-glass me-2">
+                <i class="bi bi-x-lg me-1"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-premium shadow-lg px-4">
+                <i class="bi bi-save me-2"></i> Salvar Alterações
+            </button>
+        </div>
+    </div>
+
+    <!-- Dados Principais -->
+    <div class="glass-card p-4 mb-4 shadow-sm border-0">
+        <div class="section-header mb-3">
+            <h5 class="fw-bold mb-0 text-primary small text-uppercase" style="letter-spacing: 1px;"> <i class="bi bi-info-circle me-1"></i> Dados do Sistema</h5>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-bold small text-muted">NOME EXIBIÇÃO <span class="text-danger">*</span></label>
+                <input type="text" name="nome" class="form-control form-control-lg bg-light border-0" value="{{ i.nome or '' }}" required placeholder="Ex: Cenprot Protesto Envio">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-muted">ID TÉCNICO (NOME INTEGRAÇÃO) <span class="text-danger">*</span></label>
+                <input type="text" name="nome_integracao" class="form-control form-control-lg bg-light border-0" value="{{ i.nome_integracao or '' }}" required placeholder="Ex: CENPROTENVIO">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold small text-muted">SITUAÇÃO</label>
+                <select name="ativo" class="form-select form-control-lg bg-light border-0">
+                    <option value="1" {{ 'selected' if i.ativo != 0 }}>ATIVO</option>
+                    <option value="0" {{ 'selected' if i.ativo == 0 }}>INATIVO</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- SISTEMA DE ABAS -->
+    <div class="glass-card p-0 shadow-lg border-0 mb-4 overflow-hidden">
+        <ul class="nav nav-tabs bg-light border-0 px-3 pt-2" id="scriptTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold border-0 px-4" id="editor-tab" data-bs-toggle="tab" data-bs-target="#editor-pane" type="button" role="tab">
+                    <i class="bi bi-file-earmark-code me-2"></i> Script Python
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold border-0 px-4" id="docs-tab" data-bs-toggle="tab" data-bs-target="#docs-pane" type="button" role="tab">
+                    <i class="bi bi-book me-2"></i> Dicionário de Comandos
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="scriptTabsContent">
+            <!-- ABA 1: EDITOR -->
+            <div class="tab-pane fade show active p-0" id="editor-pane" role="tabpanel">
+                <div class="bg-dark p-2 px-4 d-flex justify-content-between align-items-center">
+                    <span class="text-white-50 x-small">Editor de Script de Alta Performance (Python 3.11)</span>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="obterScriptPadrao('xml')">
+                            <i class="bi bi-filetype-xml"></i> XML
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-info" onclick="obterScriptPadrao('json')">
+                            <i class="bi bi-braces"></i> JSON
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-success" onclick="obterScriptPadrao('terceiro')">
+                            <i class="bi bi-people-fill"></i> Terceiro
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-warning" onclick="abrirModalGemini()">
+                            <i class="bi bi-stars"></i> Gemini IA
+                        </button>
+                    </div>
+                </div>
+                <textarea name="script_python" id="script_python" class="form-control code-editor-dark" rows="24" spellcheck="false">{{ i.script_python or '' }}</textarea>
+            </div>
+
+            <!-- ABA 2: DICIONARIO -->
+            <div class="tab-pane fade p-4 bg-dark text-white opacity-95" id="docs-pane" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold m-0 text-info"> <i class="bi bi-safe2-fill me-2"></i> Bibliotecas Injetadas</h5>
+                    <a href="{{ bp }}/documentacao?usr_cod={{ usr_cod }}" target="_blank" class="btn btn-sm btn-info-glass">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Ver Documentação Completa (Nova Guia)
+                    </a>
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <h6 class="fw-bold text-white mb-2 opacity-75 small"> <i class="bi bi-database me-1"></i> Banco de Dados</h6>
+                        <div class="bg-black bg-opacity-25 p-3 rounded border border-secondary border-opacity-25">
+                            <ul class="list-unstyled mb-0 x-small text-info">
+                                <li class="mb-2"><code>executar_consulta(sql, params)</code></li>
+                                <li class="mb-2"><code>executar_insert(sql, params)</code></li>
+                                <li class="mb-2"><code>executar_update(sql, params)</code></li>
+                                <li class="mb-0"><code>executar_delete(sql, params)</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="fw-bold text-white mb-2 opacity-75 small"> <i class="bi bi-globe me-1"></i> Chamadas API</h6>
+                        <div class="bg-black bg-opacity-25 p-3 rounded border border-secondary border-opacity-25">
+                            <ul class="list-unstyled mb-0 x-small text-primary">
+                                <li class="mb-2"><code>http_post(url, data, headers)</code></li>
+                                <li class="mb-2"><code>http_get(url, headers)</code></li>
+                                <li class="mb-2"><code>extrair_xml(xml, tag)</code></li>
+                                <li class="mb-0"><code>extrair_json(json, campo)</code></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="fw-bold text-white mb-2 opacity-75 small"> <i class="bi bi-braces-asterisk me-1"></i> Variáveis Contexto</h6>
+                        <div class="bg-black bg-opacity-25 p-3 rounded border border-secondary border-opacity-25">
+                            <ul class="list-unstyled mb-0 x-small text-warning">
+                                <li class="mb-2"><code>variaveis</code> - Parâmetros da API</li>
+                                <li class="mb-2"><code>token</code> - Login Automático</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Modal Gemini -->
+<div id="modalOverlay">
+    <div id="modalGemini" class="glass-card shadow-lg p-0 border-0">
+        <div class="p-4 border-bottom d-flex justify-content-between align-items-center bg-warning bg-opacity-10">
+            <h5 class="m-0 fw-bold text-dark"><i class="bi bi-stars text-warning me-2"></i> O que o Gemini deve ajustar?</h5>
+            <button type="button" class="btn-close" onclick="fecharModalGemini()"></button>
+        </div>
+        <div class="p-4">
+            <textarea id="prompt_gemini" class="form-control bg-light border-0 shadow-inner" rows="5" placeholder="Ex: Adicione um log após o envio bem-sucedido e atualize a tabela de logs interna..."></textarea>
+        </div>
+        <div class="p-4 border-top d-flex justify-content-end gap-2 bg-light bg-opacity-50">
+            <button type="button" class="btn btn-light px-4" onclick="fecharModalGemini()">Cancelar</button>
+            <button type="button" class="btn btn-warning px-4 fw-bold" id="btnGeminiAjustar" onclick="ajustarComGemini()">
+                <i class="bi bi-magic me-1"></i> Processar Ajuste
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.nav-tabs .nav-link { color: #6c757d; border-radius: 10px 10px 0 0; border: none; padding: 12px 25px; }
+.nav-tabs .nav-link.active { color: #0d6efd; background: #fff; border-bottom: 3px solid #0d6efd !important; }
+.code-editor-dark {
+    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+    font-size: 0.95rem;
+    background-color: #1e1e1e !important;
+    color: #d4d4d4 !important;
+    padding: 25px;
+    border: none !important;
+    line-height: 1.6;
+    border-radius: 0 !important;
+}
+.x-small { font-size: 0.75rem; }
+.btn-xs { padding: 0.2rem 0.5rem; font-size: 0.7rem; }
+.btn-info-glass { background: rgba(13, 202, 240, 0.1); color: #0dcaf0; border: 1px solid rgba(13, 202, 240, 0.2); }
+#modalOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9998; backdrop-filter: blur(5px); justify-content: center; align-items: center; }
+#modalOverlay.show { display: flex; }
+#modalGemini { display: none; background: white; border-radius: 15px; width: 90%; max-width: 600px; z-index: 9999; }
+#modalGemini.show { display: block; }
+</style>
+<script>
+function abrirModalGemini() { document.getElementById('modalOverlay').classList.add('show'); document.getElementById('modalGemini').classList.add('show'); }
+function fecharModalGemini() { document.getElementById('modalOverlay').classList.remove('show'); document.getElementById('modalGemini').classList.remove('show'); }
+async function ajustarComGemini() {
+    const prompt = document.getElementById('prompt_gemini').value;
+    const scriptAtual = document.getElementById('script_python').value;
+    if (!prompt) return alert('Descreva o ajuste!');
+    const btn = document.getElementById('btnGeminiAjustar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>...';
+    try {
+        const resp = await fetch('{{ bp }}/v1/gemini/ajustar?usr_cod={{ usr_cod }}', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ script: scriptAtual, prompt: prompt })
+        });
+        const data = await resp.json();
+        if (data.script_ajustado) { document.getElementById('script_python').value = data.script_ajustado; fecharModalGemini(); }
+        else alert('Erro: ' + (data.error || 'Falha na resposta'));
+    } finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-magic me-1"></i> Processar Ajuste'; }
+}
+async function obterScriptPadrao(tipo) {
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '...';
+    try {
+        const resp = await fetch(`{{ bp }}/v1/script/padrao`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({tipo: tipo}) });
+        const data = await resp.json();
+        if (data.script) document.getElementById('script_python').value = data.script;
+    } finally { btn.disabled = false; btn.innerHTML = originalText; }
+}
+</script>
+{% endblock %}

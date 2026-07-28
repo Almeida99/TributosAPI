@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-3">
+  <a href="/integracoes?usr_cod={{ usr_cod }}" class="text-decoration-none">← Voltar para a lista</a>
+  <h4 class="mt-2">Testar Integração: <code>{{ nome_integracao }}</code></h4>
+</div>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label">Valor do filtro ({valor})</label>
+            <input type="text" name="valor_filtro" class="form-control" value="{{ valor_filtro or '' }}" placeholder="Ex: ID da dívida">
+            <div class="form-text">Este valor substituirá o placeholder {valor} no SQL e no Payload.</div>
+          </div>
+          <div class="d-grid gap-2">
+            <button type="submit" name="enviar" value="0" class="btn btn-primary">1. Consultar (sem enviar)</button>
+            <button type="submit" name="enviar" value="1" class="btn btn-warning">2. Consultar e Enviar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    {% if resultado %}
+      <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Resultado do Teste</h5>
+          {% if resultado.sucesso %}
+            <span class="badge bg-success">Sucesso</span>
+          {% else %}
+            <span class="badge bg-danger">Erro</span>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if resultado.erro %}
+            <div class="alert alert-danger">{{ resultado.erro }}</div>
+          {% else %}
+            {% if resultado.preview %}
+              <h6>SQL Executado:</h6>
+              <pre class="bg-light p-2 border rounded"><code>{{ resultado.sql_executado }}</code></pre>
+
+              <h6>Dados do Primeiro Registro:</h6>
+              <pre class="bg-light p-2 border rounded"><code>{{ resultado.dados_retornados | tojson(indent=2) }}</code></pre>
+
+              <h6>Payload Gerado:</h6>
+              <pre class="bg-light p-2 border rounded"><code>{{ resultado.payload_gerado }}</code></pre>
+            {% else %}
+              <h6>Status HTTP:</h6>
+              <pre class="bg-light p-2 border rounded"><code>{{ resultado.status_code }}</code></pre>
+
+              <h6>Resposta da API:</h6>
+              <pre class="bg-light p-2 border rounded"><code>{{ resultado.resposta }}</code></pre>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="text-center text-muted p-5">
+        <p>Preencha os parâmetros e clique em um dos botões para testar.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

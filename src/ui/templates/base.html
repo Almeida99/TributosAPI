@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title or "TributosAPI" }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+      .gemini-float {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1050;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, #6e8efb, #a777e3);
+        color: white;
+        cursor: pointer;
+        transition: transform 0.3s;
+      }
+      .gemini-float:hover { transform: scale(1.1); }
+      .gemini-panel {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 350px;
+        height: 450px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        z-index: 1049;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg bg-white border-bottom">
+      <div class="container">
+        <a class="navbar-brand fw-semibold text-primary" href="{% if bp %}{{ bp }}/integracoes?usr_cod={{ usr_cod }}{% else %}/{% endif %}">
+            <i class="bi bi-cpu"></i> TributosAPI{% if banco %} <small class="text-muted">({{ banco }})</small>{% endif %}
+        </a>
+        <div class="d-flex gap-2">
+          <a class="btn btn-sm btn-outline-primary" href="{{ bp }}/tokens?usr_cod={{ usr_cod }}">Tokens Gemini</a>
+          <a class="btn btn-sm btn-outline-primary" href="{{ bp }}/integracoes?usr_cod={{ usr_cod }}">Integrações</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ bp }}/logs?usr_cod={{ usr_cod }}">Logs</a>
+          <a class="btn btn-sm btn-outline-dark" href="/config/bancos">Bancos</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container my-4">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Floating Gemini Assistant -->
+    <div class="gemini-float" onclick="toggleGemini()">
+        <i class="bi bi-robot fs-3"></i>
+    </div>
+
+    <div id="geminiPanel" class="gemini-panel border">
+        <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-stars"></i> Assistente Gemini</h6>
+            <button class="btn-close btn-close-white" onclick="toggleGemini()"></button>
+        </div>
+        <div id="geminiChatBody" class="p-3 flex-grow-1 overflow-auto" style="font-size: 0.9rem;">
+            <div class="alert alert-secondary py-2">Olá! Sou o Gemini. Como posso ajudar com suas integrações hoje?</div>
+        </div>
+        <div class="p-2 border-top bg-light">
+            <div class="input-group">
+                <input type="text" id="geminiInput" class="form-control form-control-sm" placeholder="Perguntar ao Gemini...">
+                <button class="btn btn-primary btn-sm" onclick="perguntarGemini()"><i class="bi bi-send"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const pageUsrCod = parseInt(new URLSearchParams(window.location.search).get('usr_cod') || '{{ usr_cod }}') || 0;
+
+        function toggleGemini() {
+            const panel = document.getElementById('geminiPanel');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        async function perguntarGemini() {
+            const input = document.getElementById('geminiInput');
+            const chatBody = document.getElementById('geminiChatBody');
+            const question = input.value.trim();
+            if (!question) return;
+
+            // Log User message
+            const uMsg = document.createElement('div');
+            uMsg.className = 'text-end mb-2';
+            uMsg.innerHTML = `<span class="bg-primary text-white p-2 rounded d-inline-block">${question}</span>`;
+            chatBody.appendChild(uMsg);
+            input.value = '';
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            // Loading
+            const lMsg = document.createElement('div');
+            lMsg.className = 'mb-2';
+            lMsg.innerHTML = `<span class="bg-light p-2 rounded d-inline-block"><span class="spinner-border spinner-border-sm"></span> Analisando...</span>`;
+            chatBody.appendChild(lMsg);
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            try {
+                const response = await fetch('/api/v1/gemini/analisar?usr_cod=' + pageUsrCod, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ snippet: question, context: 'chat' })
+                });
+                const data = await response.json();
+                
+                chatBody.removeChild(lMsg);
+                const aMsg = document.createElement('div');
+                aMsg.className = 'mb-2';
+                
+                // Garantir que seja sempre string
+                let respostaTxt;
+                if (!response.ok) {
+                    const detail = data.detail;
+                    respostaTxt = `Erro ${response.status}: ${typeof detail === 'object' ? JSON.stringify(detail) : (detail || JSON.stringify(data))}`;
+                } else if (typeof data.analise === 'string') {
+                    respostaTxt = data.analise;
+                } else if (data.analise) {
+                    respostaTxt = typeof data.analise === 'object' ? JSON.stringify(data.analise, null, 2) : String(data.analise);
+                } else if (data.detail) {
+                    respostaTxt = `Erro: ${typeof data.detail === 'object' ? JSON.stringify(data.detail) : data.detail}`;
+                } else {
+                    respostaTxt = JSON.stringify(data, null, 2);
+                }
+                
+                aMsg.innerHTML = `<div class="bg-light p-2 rounded border-start border-4 border-info shadow-sm" style="white-space: pre-wrap; font-size: 0.9rem;">${respostaTxt}</div>`;
+                chatBody.appendChild(aMsg);
+                chatBody.scrollTop = chatBody.scrollHeight;
+            } catch (e) {
+                if (lMsg.parentNode) chatBody.removeChild(lMsg);
+                const eMsg = document.createElement('div');
+                eMsg.className = 'mb-2';
+                eMsg.innerHTML = `<span class="bg-danger text-white p-2 rounded d-inline-block">Erro de conexão: ${e}</span>`;
+                chatBody.appendChild(eMsg);
+            }
+        }
+        
+        // Enter key support
+        document.getElementById('geminiInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') perguntarGemini();
+        });
+    </script>
+  </body>
+</html>
