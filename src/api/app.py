@@ -120,23 +120,27 @@ def build_api_app() -> FastAPI:
             routes=app.routes,
         )
 
-        # Lista integrações ativas do tenant + as permitidas ao usuário (união)
-        from src.core.replication import listar_nomes_integracoes_ativas
         from src.core.openapi_expand import expand_executar_paths
+        from src.core.replication import listar_integracoes_para_openapi
 
-        ativas = set(listar_nomes_integracoes_ativas())
-        nomes = sorted(ativas | set(permitidos))
-        # Se o usuário tem permissões, prioriza só as permitidas no docs (mais seguro).
-        # Se ainda não tiver nenhuma permissão, mostra as ativas para descoberta.
+        # Com permissões: só as liberadas; sem permissões: todas ativas (descoberta)
         if permitidos:
-            nomes = sorted(set(permitidos) & ativas) or sorted(permitidos)
+            integracoes = listar_integracoes_para_openapi(apenas_nomes=permitidos)
+            if not integracoes:
+                integracoes = [
+                    {"nome_tecnico": n, "nome": n, "exemplo": {"pagina": 1}}
+                    for n in permitidos
+                ]
+        else:
+            integracoes = listar_integracoes_para_openapi()
 
         return expand_executar_paths(
             full_openapi,
             "/v1/executar/{nome_int}",
-            nomes,
+            integracoes,
             keep_paths=["/v1/auth/token"],
         )
+
     @app.get("/docs", include_in_schema=False)
     async def get_protected_docs(user: dict = Depends(get_current_user)):
         return get_swagger_ui_html(

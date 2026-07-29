@@ -252,15 +252,51 @@ def revogar_endpoint_terceiro_em_todos(login: str, nome_integracao: str) -> None
 
 def listar_nomes_integracoes_ativas() -> List[str]:
     """NOMES_INTEGRACAO ativos no tenant atual (para OpenAPI)."""
+    return [i["nome_tecnico"] for i in listar_integracoes_para_openapi()]
+
+
+def listar_integracoes_para_openapi(apenas_nomes: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """
+    Metadados das integrações ativas para documentação:
+    nome amigável, nome técnico, exemplo de body.
+    """
+    from src.core.openapi_expand import exemplo_de_script
+
     try:
         rows = db.integracao_query(
             """
-            SELECT NOME_INTEGRACAO FROM TRB_INTEGRACAO
+            SELECT NOME, NOME_INTEGRACAO, SCRIPT_PYTHON
+            FROM TRB_INTEGRACAO
             WHERE ATIVO = 1 AND NOME_INTEGRACAO IS NOT NULL AND LTRIM(RTRIM(NOME_INTEGRACAO)) <> ''
-            ORDER BY NOME_INTEGRACAO
+            ORDER BY NOME
             """
         )
-        return sorted({str(r["NOME_INTEGRACAO"]).strip() for r in rows if r.get("NOME_INTEGRACAO")})
     except Exception as e:
         logger.warning("Não foi possível listar integrações para OpenAPI: %s", e)
         return []
+
+    filtro = None
+    if apenas_nomes is not None:
+        filtro = {str(n).strip() for n in apenas_nomes if n}
+
+    out: List[Dict[str, Any]] = []
+    vistos = set()
+    for r in rows:
+        nome_tec = str(r.get("NOME_INTEGRACAO") or "").strip()
+        if not nome_tec or nome_tec in vistos:
+            continue
+        if filtro is not None and nome_tec not in filtro:
+            continue
+        vistos.add(nome_tec)
+        nome = str(r.get("NOME") or nome_tec).strip()
+        script = r.get("SCRIPT_PYTHON") or ""
+        out.append(
+            {
+                "nome_tecnico": nome_tec,
+                "nome": nome,
+                "script": script,
+                "exemplo": exemplo_de_script(script if isinstance(script, str) else str(script)),
+                "descricao": f"Executa a integração **{nome}** (`{nome_tec}`).",
+            }
+        )
+    return out

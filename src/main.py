@@ -22,7 +22,10 @@ templates = Jinja2Templates(directory=["src/ui/templates", "src/ui"])
 
 app = FastAPI(
     title="TributosAPI",
-    description="Motor de Integração multibanco — acesse /{banco}/...",
+    description="Motor de Integração multibanco — acesse /{banco}/docs",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # Middleware: CORS primeiro; tenant por último a ser adicionado = executa primeiro no request
@@ -36,13 +39,13 @@ app.add_middleware(
 app.add_middleware(TenantPathMiddleware)
 
 
-def custom_openapi():
-    """OpenAPI com um path por integração ativa do tenant atual."""
+def _build_main_openapi() -> dict:
+    """OpenAPI com um path por integração ativa do tenant (nome + exemplo)."""
     from fastapi.openapi.utils import get_openapi
 
     from src.core.database import get_current_tenant
     from src.core.openapi_expand import expand_executar_paths
-    from src.core.replication import listar_nomes_integracoes_ativas
+    from src.core.replication import listar_integracoes_para_openapi
 
     schema = get_openapi(
         title=app.title,
@@ -50,19 +53,34 @@ def custom_openapi():
         description=app.description,
         routes=app.routes,
     )
-    nomes: list = []
+    integracoes = []
     if get_current_tenant():
-        nomes = listar_nomes_integracoes_ativas()
+        integracoes = listar_integracoes_para_openapi()
     expand_executar_paths(
         schema,
         "/v1/executar/{nome_int}",
-        nomes,
+        integracoes,
         keep_paths=["/v1/auth/token"],
     )
     return schema
 
 
-app.openapi = custom_openapi
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi_json():
+    """Relativo a /{slug}/openapi.json — preserva o tenant do middleware."""
+    return _build_main_openapi()
+
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_docs():
+    from fastapi.openapi.docs import get_swagger_ui_html
+
+    return get_swagger_ui_html(
+        openapi_url="./openapi.json",
+        title=f"{app.title} - Docs",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+    )
 
 # --- API de integração com terceiros (JWT, docs em /api/docs) — opcional via env ---
 _api_subapp: Optional[FastAPI] = None
@@ -199,7 +217,11 @@ def registrar_endpoints():
 
         async def handler_interno(
             nome_int: str,
-            payload_params: Optional[PayloadParams] = None,
+            payload_params: Optional[PayloadParams] = Body(
+                None,
+                example={"pagina": 1, "filtro": "exemplo"},
+                description="Parâmetros enviados ao script da integração (params).",
+            ),
             usr_cod: Optional[int] = Query(None),
         ):
             return await _executar_interno(nome_int, usr_cod, payload_params)
