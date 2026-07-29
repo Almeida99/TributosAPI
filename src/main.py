@@ -220,7 +220,10 @@ def registrar_endpoints():
             payload_params: Optional[PayloadParams] = Body(
                 None,
                 example={"pagina": 1, "filtro": "exemplo"},
-                description="Parâmetros enviados ao script da integração (params).",
+                description=(
+                    "JSON de filtros livres. Cada campo do body é repassado ao script "
+                    "como params (ex.: params.get('filtro')). Campos extras são permitidos."
+                ),
             ),
             usr_cod: Optional[int] = Query(None),
         ):

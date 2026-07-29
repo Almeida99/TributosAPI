@@ -11,38 +11,96 @@ _PARAMS_GET_RE = re.compile(
     re.IGNORECASE,
 )
 
+_DESC_FILTROS = (
+    "O body JSON é um objeto livre de **filtros**. "
+    "Cada campo enviado é repassado ao script da integração em `params` "
+    "(ex.: `params.get('inscricao')`, `params.get('pagina')`). "
+    "Campos não listados no exemplo também são aceitos, se o script os utilizar."
+)
+
+
+def _valor_exemplo_e_tipo(raw_default: str) -> tuple:
+    """Retorna (exemplo, tipo_openapi) a partir do default do params.get."""
+    raw_default = (raw_default or "").strip()
+    if not raw_default:
+        return "string", "string"
+    if raw_default.lower() in ("true", "false"):
+        return raw_default.lower() == "true", "boolean"
+    if raw_default.isdigit():
+        return int(raw_default), "integer"
+    if (raw_default.startswith("'") and raw_default.endswith("'")) or (
+        raw_default.startswith('"') and raw_default.endswith('"')
+    ):
+        return raw_default[1:-1], "string"
+    if "int(" in raw_default or "isdigit" in raw_default:
+        return 1, "integer"
+    return "string", "string"
+
+
+def campos_de_script(script: Optional[str]) -> Dict[str, Dict[str, Any]]:
+    """Mapa campo → {exemplo, tipo, description} extraído do script."""
+    if not script:
+        return {
+            "pagina": {
+                "exemplo": 1,
+                "tipo": "integer",
+                "description": "Filtro/parâmetro enviado no JSON (params['pagina']).",
+            }
+        }
+
+    campos: Dict[str, Dict[str, Any]] = {}
+    for m in _PARAMS_GET_RE.finditer(script):
+        chave = m.group(1).strip()
+        if not chave or chave in campos:
+            continue
+        exemplo, tipo = _valor_exemplo_e_tipo(m.group(2) or "")
+        campos[chave] = {
+            "exemplo": exemplo,
+            "tipo": tipo,
+            "description": f"Filtro opcional. Disponível no script como params.get('{chave}').",
+        }
+    if not campos:
+        campos["pagina"] = {
+            "exemplo": 1,
+            "tipo": "integer",
+            "description": "Filtro/parâmetro enviado no JSON (params['pagina']).",
+        }
+    return campos
+
 
 def exemplo_de_script(script: Optional[str]) -> Dict[str, Any]:
     """Extrai chaves de params.get(...) do script e monta um exemplo de body."""
-    if not script:
-        return {"pagina": 1}
+    return {k: v["exemplo"] for k, v in campos_de_script(script).items()}
 
-    exemplo: Dict[str, Any] = {}
-    for m in _PARAMS_GET_RE.finditer(script):
-        chave = m.group(1).strip()
-        if not chave or chave in exemplo:
-            continue
-        raw_default = (m.group(2) or "").strip()
-        if not raw_default:
-            exemplo[chave] = "string"
-            continue
-        # Literais simples
-        if raw_default.lower() in ("true", "false"):
-            exemplo[chave] = raw_default.lower() == "true"
-        elif raw_default.isdigit():
-            exemplo[chave] = int(raw_default)
-        elif (raw_default.startswith("'") and raw_default.endswith("'")) or (
-            raw_default.startswith('"') and raw_default.endswith('"')
-        ):
-            exemplo[chave] = raw_default[1:-1]
-        else:
-            # default complexo (ex.: expressão) — usa placeholder tipado
-            if "int(" in raw_default or "isdigit" in raw_default:
-                exemplo[chave] = 1
-            else:
-                exemplo[chave] = "string"
 
-    return exemplo or {"pagina": 1}
+def _schema_filtros(exemplo: Dict[str, Any], script: Optional[str] = None) -> Dict[str, Any]:
+    """Schema OpenAPI deixando explícito que o JSON são filtros livres."""
+    campos = campos_de_script(script) if script is not None else {}
+    properties: Dict[str, Any] = {}
+    for chave, meta in campos.items():
+        properties[chave] = {
+            "type": meta["tipo"],
+            "description": meta["description"],
+            "example": meta["exemplo"],
+        }
+    for chave, val in (exemplo or {}).items():
+        if chave in properties:
+            continue
+        t = "integer" if isinstance(val, int) else "boolean" if isinstance(val, bool) else "string"
+        properties[chave] = {
+            "type": t,
+            "description": f"Filtro opcional (params['{chave}']).",
+            "example": val,
+        }
+    return {
+        "type": "object",
+        "description": _DESC_FILTROS,
+        "properties": properties,
+        "additionalProperties": {
+            "description": "Qualquer outro campo JSON também é aceito como filtro (params).",
+        },
+        "example": exemplo or {"pagina": 1},
+    }
 
 
 def expand_executar_paths(
@@ -58,7 +116,7 @@ def expand_executar_paths(
 
     Cada item de `integracoes` pode ser:
     - str: só o nome técnico (NOME_INTEGRACAO)
-    - dict: {nome_tecnico, nome, exemplo, descricao}
+    - dict: {nome_tecnico, nome, exemplo, descricao, script}
     """
     keep = set(keep_paths or [])
     original_paths = openapi.get("paths") or {}
@@ -79,7 +137,10 @@ def expand_executar_paths(
                         "nome_tecnico": nome_tec,
                         "nome": nome_tec,
                         "exemplo": default_example or {"pagina": 1},
-                        "descricao": f"Executa a integração `{nome_tec}`.",
+                        "script": None,
+                        "descricao": (
+                            f"Executa a integração `{nome_tec}`.\n\n{_DESC_FILTROS}"
+                        ),
                     }
                 )
         elif isinstance(item, dict):
@@ -87,16 +148,18 @@ def expand_executar_paths(
             if not nome_tec:
                 continue
             nome = str(item.get("nome") or nome_tec).strip()
+            script = item.get("script")
             exemplo = item.get("exemplo")
             if not isinstance(exemplo, dict) or not exemplo:
-                exemplo = default_example or exemplo_de_script(item.get("script"))
+                exemplo = default_example or exemplo_de_script(script)
+            base_desc = item.get("descricao") or f"Executa a integração **{nome}** (`{nome_tec}`)."
             items.append(
                 {
                     "nome_tecnico": nome_tec,
                     "nome": nome,
                     "exemplo": exemplo,
-                    "descricao": item.get("descricao")
-                    or f"Executa a integração **{nome}** (`{nome_tec}`).",
+                    "script": script,
+                    "descricao": f"{base_desc}\n\n{_DESC_FILTROS}",
                 }
             )
 
@@ -111,47 +174,28 @@ def expand_executar_paths(
                 m["description"] = info["descricao"]
                 m["operationId"] = f"executar_{re.sub(r'[^a-zA-Z0-9_]', '_', nome_tec)}"
                 m["tags"] = ["Integrações"]
-                # Remove path param nome_int (já está no path concreto)
                 params = [
                     p
                     for p in (m.get("parameters") or [])
                     if not (p.get("name") == "nome_int" and p.get("in") == "path")
                 ]
                 m["parameters"] = params
-                # Exemplo de body
-                rb = m.get("requestBody")
-                if isinstance(rb, dict):
-                    content = rb.get("content") or {}
-                    for _ctype, media in content.items():
-                        if not isinstance(media, dict):
-                            continue
-                        media["example"] = info["exemplo"]
-                        schema = media.get("schema")
-                        if isinstance(schema, dict):
-                            schema["example"] = info["exemplo"]
-                            # Prefer object livre com exemplo
-                            if schema.get("type") != "object":
-                                media["schema"] = {
-                                    "type": "object",
-                                    "additionalProperties": True,
-                                    "example": info["exemplo"],
-                                }
-                else:
-                    m["requestBody"] = {
-                        "required": False,
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": True,
-                                    "example": info["exemplo"],
-                                },
-                                "example": info["exemplo"],
-                            }
-                        },
-                    }
+
+                schema_body = _schema_filtros(info["exemplo"], info.get("script"))
+                m["requestBody"] = {
+                    "required": False,
+                    "description": (
+                        "JSON de filtros. Envie no body os campos que deseja filtrar; "
+                        "eles ficam disponíveis no script via `params`."
+                    ),
+                    "content": {
+                        "application/json": {
+                            "schema": schema_body,
+                            "example": info["exemplo"],
+                        }
+                    },
+                }
             filtered[f"/v1/executar/{nome_tec}"] = methods
-    # Sem integrações: não expõe o catch-all genérico {nome_int}
 
     openapi["paths"] = filtered
     return openapi
@@ -201,7 +245,10 @@ def aplicar_base_banco(
     info = dict(openapi.get("info") or {})
     desc = (info.get("description") or "").rstrip()
     info["description"] = (
-        f"{desc}\n\n**Banco atual:** `{slug}` — as URLs incluem o prefixo `/{slug}`."
+        f"{desc}\n\n"
+        f"**Banco atual:** `{slug}` — as URLs incluem o prefixo `/{slug}`.\n\n"
+        "**Filtros:** no `POST .../v1/executar/{{nome}}`, o body JSON é um objeto livre; "
+        "cada campo é um filtro repassado ao script (`params`)."
     ).strip()
     openapi["info"] = info
     return openapi
