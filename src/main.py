@@ -90,6 +90,7 @@ async def swagger_docs():
         title=f"{app.title} - Docs",
         swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
         swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+        swagger_ui_parameters={"persistAuthorization": True},
     )
 
 # --- API de integração com terceiros (JWT, docs em /api/docs) — opcional via env ---

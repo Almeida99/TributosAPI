@@ -12,10 +12,7 @@ _PARAMS_GET_RE = re.compile(
 )
 
 _DESC_FILTROS = "É possível passar campos no JSON do body; cada campo será usado como filtro."
-_DESC_AUTH = (
-    "**Autenticação:** use o botão **Authorize** e informe o JWT "
-    "(`Authorization: Bearer <token>`). Obtenha o token em `POST .../v1/auth/token`."
-)
+_DESC_AUTH = "Informe o token JWT no header Authorization (Bearer) ou use o botão Authorize."
 
 BEARER_SCHEME = "BearerAuth"
 
@@ -237,11 +234,25 @@ def expand_executar_paths(
                 }
                 if require_bearer:
                     m["security"] = [{BEARER_SCHEME: []}]
+                    # Campo visível no Try it out (além do botão Authorize)
+                    params.append(
+                        {
+                            "name": "Authorization",
+                            "in": "header",
+                            "required": False,
+                            "description": "Token JWT no formato: Bearer <seu_token>",
+                            "schema": {"type": "string"},
+                            "example": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        }
+                    )
+                    m["parameters"] = params
             filtered[f"/v1/executar/{nome_tec}"] = methods
 
     openapi["paths"] = filtered
     if require_bearer:
         garantir_bearer_scheme(openapi)
+        # Garante o cadeado Authorize no topo do Swagger
+        openapi["security"] = [{BEARER_SCHEME: []}]
     return openapi
 
 
@@ -291,8 +302,9 @@ def aplicar_base_banco(
     info["description"] = (
         f"{desc}\n\n"
         f"**Banco atual:** `{slug}` — as URLs incluem o prefixo `/{slug}`.\n\n"
-        "**Autenticação:** clique em **Authorize** e informe o Bearer JWT "
-        "(obtenha em `POST .../v1/auth/token`).\n\n"
+        "**Autenticação:** informe o token JWT no header **Authorization** "
+        "(`Bearer <token>`) ou use o botão **Authorize**. "
+        "Obtenha o token em `POST .../v1/auth/token`.\n\n"
         f"**Filtros:** {_DESC_FILTROS}"
     ).strip()
     openapi["info"] = info

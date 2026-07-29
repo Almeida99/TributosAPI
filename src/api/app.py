@@ -150,6 +150,7 @@ def build_api_app() -> FastAPI:
             title=app.title + " - Docs",
             swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
             swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+            swagger_ui_parameters={"persistAuthorization": True},
         )
 
     return app
