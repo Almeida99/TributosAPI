@@ -11,13 +11,7 @@ _PARAMS_GET_RE = re.compile(
     re.IGNORECASE,
 )
 
-_DESC_FILTROS = (
-    "O body JSON é um objeto livre de **filtros**. "
-    "Cada campo enviado é repassado ao script da integração em `params` "
-    "(ex.: `params.get('inscricao')`, `params.get('pagina')`). "
-    "Campos não listados no exemplo também são aceitos, se o script os utilizar."
-)
-
+_DESC_FILTROS = "É possível passar campos no JSON do body; cada campo será usado como filtro."
 _DESC_AUTH = (
     "**Autenticação:** use o botão **Authorize** e informe o JWT "
     "(`Authorization: Bearer <token>`). Obtenha o token em `POST .../v1/auth/token`."
@@ -67,7 +61,7 @@ def campos_de_script(script: Optional[str]) -> Dict[str, Dict[str, Any]]:
             "pagina": {
                 "exemplo": 1,
                 "tipo": "integer",
-                "description": "Filtro/parâmetro enviado no JSON (params['pagina']).",
+                "description": "Campo de filtro no JSON do body.",
             }
         }
 
@@ -80,13 +74,13 @@ def campos_de_script(script: Optional[str]) -> Dict[str, Dict[str, Any]]:
         campos[chave] = {
             "exemplo": exemplo,
             "tipo": tipo,
-            "description": f"Filtro opcional. Disponível no script como params.get('{chave}').",
+            "description": "Campo de filtro no JSON do body.",
         }
     if not campos:
         campos["pagina"] = {
             "exemplo": 1,
             "tipo": "integer",
-            "description": "Filtro/parâmetro enviado no JSON (params['pagina']).",
+            "description": "Campo de filtro no JSON do body.",
         }
     return campos
 
@@ -112,7 +106,7 @@ def _schema_filtros(exemplo: Dict[str, Any], script: Optional[str] = None) -> Di
         t = "integer" if isinstance(val, int) else "boolean" if isinstance(val, bool) else "string"
         properties[chave] = {
             "type": t,
-            "description": f"Filtro opcional (params['{chave}']).",
+            "description": "Campo de filtro no JSON do body.",
             "example": val,
         }
     return {
@@ -120,7 +114,7 @@ def _schema_filtros(exemplo: Dict[str, Any], script: Optional[str] = None) -> Di
         "description": _DESC_FILTROS,
         "properties": properties,
         "additionalProperties": {
-            "description": "Qualquer outro campo JSON também é aceito como filtro (params).",
+            "description": "Campo de filtro adicional no JSON.",
         },
         "example": exemplo or {"pagina": 1},
     }
@@ -233,10 +227,7 @@ def expand_executar_paths(
                 schema_body = _schema_filtros(info["exemplo"], info.get("script"))
                 m["requestBody"] = {
                     "required": False,
-                    "description": (
-                        "JSON de filtros. Envie no body os campos que deseja filtrar; "
-                        "eles ficam disponíveis no script via `params`."
-                    ),
+                    "description": _DESC_FILTROS,
                     "content": {
                         "application/json": {
                             "schema": schema_body,
@@ -302,8 +293,7 @@ def aplicar_base_banco(
         f"**Banco atual:** `{slug}` — as URLs incluem o prefixo `/{slug}`.\n\n"
         "**Autenticação:** clique em **Authorize** e informe o Bearer JWT "
         "(obtenha em `POST .../v1/auth/token`).\n\n"
-        "**Filtros:** no `POST .../v1/executar/{{nome}}`, o body JSON é um objeto livre; "
-        "cada campo é um filtro repassado ao script (`params`)."
+        f"**Filtros:** {_DESC_FILTROS}"
     ).strip()
     openapi["info"] = info
     return openapi

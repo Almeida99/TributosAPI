@@ -231,8 +231,7 @@ def registrar_endpoints():
                 None,
                 example={"pagina": 1, "filtro": "exemplo"},
                 description=(
-                    "JSON de filtros livres. Cada campo do body é repassado ao script "
-                    "como params (ex.: params.get('filtro')). Campos extras são permitidos."
+                    "É possível passar campos no JSON do body; cada campo será usado como filtro."
                 ),
             ),
             usr_cod: Optional[int] = Query(None),
@@ -258,8 +257,7 @@ def registrar_endpoints():
                     ...,
                     example={"pagina": 1},
                     description=(
-                        "JSON de filtros. Requer Authorization: Bearer <token>. "
-                        "Cada campo vai para params no script."
+                        "É possível passar campos no JSON do body; cada campo será usado como filtro."
                     ),
                 ),
                 id_cadastro: int = Depends(get_cadastro_jwt),
