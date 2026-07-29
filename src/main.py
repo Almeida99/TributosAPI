@@ -44,7 +44,7 @@ def _build_main_openapi() -> dict:
     from fastapi.openapi.utils import get_openapi
 
     from src.core.database import get_current_tenant
-    from src.core.openapi_expand import expand_executar_paths
+    from src.core.openapi_expand import aplicar_base_banco, expand_executar_paths
     from src.core.replication import listar_integracoes_para_openapi
 
     schema = get_openapi(
@@ -62,7 +62,7 @@ def _build_main_openapi() -> dict:
         integracoes,
         keep_paths=["/v1/auth/token"],
     )
-    return schema
+    return aplicar_base_banco(schema, path_prefix="")
 
 
 @app.get("/openapi.json", include_in_schema=False)

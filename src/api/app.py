@@ -120,7 +120,7 @@ def build_api_app() -> FastAPI:
             routes=app.routes,
         )
 
-        from src.core.openapi_expand import expand_executar_paths
+        from src.core.openapi_expand import aplicar_base_banco, expand_executar_paths
         from src.core.replication import listar_integracoes_para_openapi
 
         # Com permissões: só as liberadas; sem permissões: todas ativas (descoberta)
@@ -134,12 +134,13 @@ def build_api_app() -> FastAPI:
         else:
             integracoes = listar_integracoes_para_openapi()
 
-        return expand_executar_paths(
+        expand_executar_paths(
             full_openapi,
             "/v1/executar/{nome_int}",
             integracoes,
             keep_paths=["/v1/auth/token"],
         )
+        return aplicar_base_banco(full_openapi, path_prefix="/api")
 
     @app.get("/docs", include_in_schema=False)
     async def get_protected_docs(user: dict = Depends(get_current_user)):

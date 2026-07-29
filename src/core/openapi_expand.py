@@ -155,3 +155,53 @@ def expand_executar_paths(
 
     openapi["paths"] = filtered
     return openapi
+
+
+def aplicar_base_banco(
+    openapi: Dict[str, Any],
+    *,
+    path_prefix: str = "",
+) -> Dict[str, Any]:
+    """
+    Faz a documentação refletir a URL real com o slug do banco.
+
+    Ex.: path_prefix="" → /bonfim/v1/executar/HIPAC
+         path_prefix="/api" → /bonfim/api/v1/executar/HIPAC
+    """
+    from src.core.database import get_current_tenant
+
+    tenant = get_current_tenant()
+    if not tenant or not tenant.get("slug"):
+        openapi["servers"] = [
+            {
+                "url": "/",
+                "description": "Sem banco no path — acesse /{slug}/docs",
+            }
+        ]
+        return openapi
+
+    slug = str(tenant["slug"]).strip("/")
+    nome = tenant.get("nome") or slug
+    base = f"/{slug}{path_prefix}".rstrip("/") or f"/{slug}"
+
+    original = openapi.get("paths") or {}
+    prefixed: Dict[str, Any] = {}
+    for path, methods in original.items():
+        p = path if path.startswith("/") else f"/{path}"
+        prefixed[f"{base}{p}"] = methods
+    openapi["paths"] = prefixed
+
+    openapi["servers"] = [
+        {
+            "url": "/",
+            "description": f"Banco: {nome} (/{slug})",
+        }
+    ]
+
+    info = dict(openapi.get("info") or {})
+    desc = (info.get("description") or "").rstrip()
+    info["description"] = (
+        f"{desc}\n\n**Banco atual:** `{slug}` — as URLs incluem o prefixo `/{slug}`."
+    ).strip()
+    openapi["info"] = info
+    return openapi
