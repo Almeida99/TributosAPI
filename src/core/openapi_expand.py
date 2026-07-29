@@ -18,6 +18,29 @@ _DESC_FILTROS = (
     "Campos não listados no exemplo também são aceitos, se o script os utilizar."
 )
 
+_DESC_AUTH = (
+    "**Autenticação:** use o botão **Authorize** e informe o JWT "
+    "(`Authorization: Bearer <token>`). Obtenha o token em `POST .../v1/auth/token`."
+)
+
+BEARER_SCHEME = "BearerAuth"
+
+
+def garantir_bearer_scheme(openapi: Dict[str, Any]) -> Dict[str, Any]:
+    """Registra o esquema HTTP Bearer (JWT) no OpenAPI."""
+    comps = openapi.setdefault("components", {})
+    schemes = comps.setdefault("securitySchemes", {})
+    schemes[BEARER_SCHEME] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": (
+            "Token JWT de terceiros. Gere em POST /v1/auth/token "
+            "(login/senha do cadastro de terceiros) e cole aqui."
+        ),
+    }
+    return openapi
+
 
 def _valor_exemplo_e_tipo(raw_default: str) -> tuple:
     """Retorna (exemplo, tipo_openapi) a partir do default do params.get."""
@@ -110,6 +133,7 @@ def expand_executar_paths(
     *,
     keep_paths: Optional[List[str]] = None,
     default_example: Optional[Dict[str, Any]] = None,
+    require_bearer: bool = True,
 ) -> Dict[str, Any]:
     """
     Substitui o path catch-all por um path concreto por integração.
@@ -124,9 +148,28 @@ def expand_executar_paths(
 
     for path, methods in original_paths.items():
         if path in keep:
-            filtered[path] = methods
+            methods_copy = copy.deepcopy(methods)
+            # Login/token permanece público
+            if require_bearer and path.rstrip("/").endswith("/auth/token"):
+                for m in methods_copy.values():
+                    if isinstance(m, dict):
+                        m["security"] = []
+            filtered[path] = methods_copy
 
     catch = original_paths.get(catch_path)
+    if not catch:
+        # Template mínimo quando a rota catch-all não entra no schema
+        catch = {
+            "post": {
+                "tags": ["Integrações"],
+                "parameters": [],
+                "responses": {
+                    "200": {"description": "Successful Response"},
+                    "401": {"description": "Token ausente ou inválido"},
+                },
+            }
+        }
+
     items: List[Dict[str, Any]] = []
     for item in integracoes or []:
         if isinstance(item, str):
@@ -139,7 +182,7 @@ def expand_executar_paths(
                         "exemplo": default_example or {"pagina": 1},
                         "script": None,
                         "descricao": (
-                            f"Executa a integração `{nome_tec}`.\n\n{_DESC_FILTROS}"
+                            f"Executa a integração `{nome_tec}`.\n\n{_DESC_AUTH}\n\n{_DESC_FILTROS}"
                         ),
                     }
                 )
@@ -159,7 +202,7 @@ def expand_executar_paths(
                     "nome": nome,
                     "exemplo": exemplo,
                     "script": script,
-                    "descricao": f"{base_desc}\n\n{_DESC_FILTROS}",
+                    "descricao": f"{base_desc}\n\n{_DESC_AUTH}\n\n{_DESC_FILTROS}",
                 }
             )
 
@@ -179,6 +222,12 @@ def expand_executar_paths(
                     for p in (m.get("parameters") or [])
                     if not (p.get("name") == "nome_int" and p.get("in") == "path")
                 ]
+                # Remove usr_cod do schema público (consumo via JWT)
+                params = [
+                    p
+                    for p in params
+                    if not (p.get("name") == "usr_cod" and p.get("in") == "query")
+                ]
                 m["parameters"] = params
 
                 schema_body = _schema_filtros(info["exemplo"], info.get("script"))
@@ -195,9 +244,13 @@ def expand_executar_paths(
                         }
                     },
                 }
+                if require_bearer:
+                    m["security"] = [{BEARER_SCHEME: []}]
             filtered[f"/v1/executar/{nome_tec}"] = methods
 
     openapi["paths"] = filtered
+    if require_bearer:
+        garantir_bearer_scheme(openapi)
     return openapi
 
 
@@ -247,6 +300,8 @@ def aplicar_base_banco(
     info["description"] = (
         f"{desc}\n\n"
         f"**Banco atual:** `{slug}` — as URLs incluem o prefixo `/{slug}`.\n\n"
+        "**Autenticação:** clique em **Authorize** e informe o Bearer JWT "
+        "(obtenha em `POST .../v1/auth/token`).\n\n"
         "**Filtros:** no `POST .../v1/executar/{{nome}}`, o body JSON é um objeto livre; "
         "cada campo é um filtro repassado ao script (`params`)."
     ).strip()

@@ -139,6 +139,7 @@ def build_api_app() -> FastAPI:
             "/v1/executar/{nome_int}",
             integracoes,
             keep_paths=["/v1/auth/token"],
+            require_bearer=True,
         )
         return aplicar_base_banco(full_openapi, path_prefix="/api")
 

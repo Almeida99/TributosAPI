@@ -40,7 +40,7 @@ app.add_middleware(TenantPathMiddleware)
 
 
 def _build_main_openapi() -> dict:
-    """OpenAPI com um path por integração ativa do tenant (nome + exemplo)."""
+    """OpenAPI de consumo: /{banco}/api/v1/... com Bearer JWT."""
     from fastapi.openapi.utils import get_openapi
 
     from src.core.database import get_current_tenant
@@ -50,9 +50,17 @@ def _build_main_openapi() -> dict:
     schema = get_openapi(
         title=app.title,
         version=app.version,
-        description=app.description,
+        description=(
+            "API de consumo para terceiros. "
+            "1) POST /v1/auth/token → 2) Authorize (Bearer) → 3) POST /v1/executar/{nome}."
+        ),
         routes=app.routes,
     )
+    # Não documenta a rota interna do painel (sem JWT)
+    paths = schema.get("paths") or {}
+    paths.pop("/v1/executar/{nome_int}", None)
+    schema["paths"] = paths
+
     integracoes = []
     if get_current_tenant():
         integracoes = listar_integracoes_para_openapi()
@@ -61,8 +69,10 @@ def _build_main_openapi() -> dict:
         "/v1/executar/{nome_int}",
         integracoes,
         keep_paths=["/v1/auth/token"],
+        require_bearer=True,
     )
-    return aplicar_base_banco(schema, path_prefix="")
+    # Documenta a URL real de consumo (mount /api)
+    return aplicar_base_banco(schema, path_prefix="/api")
 
 
 @app.get("/openapi.json", include_in_schema=False)
@@ -229,15 +239,14 @@ def registrar_endpoints():
         ):
             return await _executar_interno(nome_int, usr_cod, payload_params)
 
-        # Sempre disponível para o painel (usr_cod) em /{banco}/v1/executar/{nome}
-        # include_in_schema=True para o custom_openapi expandir por integração
+        # Rota interna do painel (usr_cod) — fora do Swagger público
         app.add_api_route(
             path="/v1/executar/{nome_int}",
             endpoint=handler_interno,
             methods=["POST"],
             tags=["Integrações"],
             name="api_executar_catch",
-            include_in_schema=True,
+            include_in_schema=False,
         )
 
         if _api_subapp:
@@ -245,7 +254,14 @@ def registrar_endpoints():
 
             async def partner_handler(
                 nome_int: str,
-                payload_params: Dict[str, Any] = Body(..., example={"pagina": 1}),
+                payload_params: Dict[str, Any] = Body(
+                    ...,
+                    example={"pagina": 1},
+                    description=(
+                        "JSON de filtros. Requer Authorization: Bearer <token>. "
+                        "Cada campo vai para params no script."
+                    ),
+                ),
                 id_cadastro: int = Depends(get_cadastro_jwt),
             ):
                 return await _executar_parceiro(nome_int, id_cadastro, payload_params)
