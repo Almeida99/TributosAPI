@@ -2,56 +2,24 @@
 from __future__ import annotations
 
 import logging
-import secrets
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
 from src.core import tenants as tenants_mod
-from src.core.config import CONFIG_ADMIN_PASSWORD, CONFIG_ADMIN_USER
+from src.core.admin_auth import require_admin_basic
 
 logger = logging.getLogger(__name__)
 
-_basic = HTTPBasic(auto_error=False)
 templates = Jinja2Templates(directory=["src/ui/templates", "src/ui"])
-
-
-def require_config_admin(
-    credentials: Optional[HTTPBasicCredentials] = Depends(_basic),
-) -> str:
-    """Exige CONFIG_ADMIN_USER / CONFIG_ADMIN_PASSWORD via HTTP Basic Auth."""
-    if not CONFIG_ADMIN_USER or not CONFIG_ADMIN_PASSWORD:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Configuração de bancos desabilitada: defina CONFIG_ADMIN_USER e "
-                "CONFIG_ADMIN_PASSWORD no .env."
-            ),
-        )
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Autenticação necessária.",
-            headers={"WWW-Authenticate": 'Basic realm="TributosAPI Config"'},
-        )
-    user_ok = secrets.compare_digest(credentials.username, CONFIG_ADMIN_USER)
-    pass_ok = secrets.compare_digest(credentials.password, CONFIG_ADMIN_PASSWORD)
-    if not (user_ok and pass_ok):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário ou senha inválidos.",
-            headers={"WWW-Authenticate": 'Basic realm="TributosAPI Config"'},
-        )
-    return credentials.username
 
 
 router = APIRouter(
     prefix="/config",
     tags=["Configuração"],
-    dependencies=[Depends(require_config_admin)],
+    dependencies=[Depends(require_admin_basic)],
 )
 
 

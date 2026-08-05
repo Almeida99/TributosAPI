@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
+from src.core.admin_auth import require_admin_basic
 from src.core.database import db, get_current_tenant
 from src.core.tenant_middleware import TenantPathMiddleware
 from src.core.tenants import list_bancos
@@ -244,6 +245,7 @@ def registrar_endpoints():
             path="/v1/executar/{nome_int}",
             endpoint=handler_interno,
             methods=["POST"],
+            dependencies=[Depends(require_admin_basic)],
             tags=["Integrações"],
             name="api_executar_catch",
             include_in_schema=False,
@@ -296,7 +298,12 @@ async def startup_event():
     registrar_endpoints()
 
 
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+@app.get(
+    "/",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+    dependencies=[Depends(require_admin_basic)],
+)
 async def home_bancos(request: Request, usr_cod: Optional[int] = None, erro: Optional[str] = None):
     bancos = []
     for b in list_bancos(apenas_ativos=True):

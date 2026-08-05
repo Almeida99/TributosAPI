@@ -32,12 +32,12 @@ O catálogo fica em `data/bancos.json` (volume Docker). **Os bancos são cadastr
 
 | Controle | Comportamento |
 |----------|----------------|
-| `/config/bancos` | HTTP Basic (`CONFIG_ADMIN_USER` / `CONFIG_ADMIN_PASSWORD`). Sem essas vars → 503 |
+| Home, painel, execução interna e `/config/*` | HTTP Basic (`CONFIG_ADMIN_USER` / `CONFIG_ADMIN_PASSWORD`). Sem essas vars → 503 |
 | Senhas no catálogo | Cifradas com Fernet (`BANCOS_SECRET_KEY`). Texto puro legado é migrado na leitura |
 | Credenciais de município | Só na interface / `bancos.json` — **não** no `.env` |
 | SQL Server | `DB_ENCRYPT=yes` por padrão; `DB_TRUST_SERVER_CERTIFICATE` configurável |
-| Painel (`usr_cod`) | Uso **interno/VPN** — autenticação fraca por design do ERP; não expor na internet aberta |
-| API terceiros | JWT + bcrypt + `API_ADMIN_KEY` |
+| Painel (`usr_cod`) | Mantido para identificar/validar o usuário do ERP, além do HTTP Basic administrativo |
+| API externa de terceiros (`/{slug}/api/v1/*`) | JWT + bcrypt + `API_ADMIN_KEY`; não usa `CONFIG_ADMIN_*` |
 
 Checklist antes de subir:
 
@@ -80,8 +80,8 @@ Depois de subir, acesse `/config/bancos` (Basic Auth) e cadastre cada município
 | `DB_ENCRYPT` | `yes`/`no` — TLS na conexão ODBC (padrão: `yes`) |
 | `DB_TRUST_SERVER_CERTIFICATE` | `yes`/`no` — confiar em cert. autoassinado (padrão: `yes`) |
 | `BANCOS_SECRET_KEY` | Chave Fernet para cifrar senhas em `bancos.json` (**obrigatória** para gravar) |
-| `CONFIG_ADMIN_USER` | Usuário HTTP Basic de `/config/bancos` |
-| `CONFIG_ADMIN_PASSWORD` | Senha HTTP Basic de `/config/bancos` |
+| `CONFIG_ADMIN_USER` | Usuário HTTP Basic da home, do painel, da execução interna e de `/config/*` |
+| `CONFIG_ADMIN_PASSWORD` | Senha HTTP Basic da home, do painel, da execução interna e de `/config/*` |
 | `API_JWT_SECRET` | Segredo JWT para API de terceiros (obrigatório para ativar o módulo) |
 | `API_TOKEN_EXPIRE_MINUTES` | Tempo de expiração do token em minutos (padrão: 60) |
 | `API_ORCHESTRATOR_USR_COD` | Código do usuário técnico na `FR_USUARIO` |
@@ -98,6 +98,7 @@ tributosapi/
 ├── src/
 │   ├── api/                     # Módulo API externa (terceiros/JWT)
 │   ├── core/
+│   │   ├── admin_auth.py        # HTTP Basic compartilhado das áreas administrativas
 │   │   ├── config.py            # Variáveis de ambiente
 │   │   ├── database.py          # Conexões SQL Server (por tenant)
 │   │   ├── tenants.py           # Catálogo de bancos
@@ -132,8 +133,9 @@ tributosapi/
 
 ## Painel Administrativo
 
-1. Acesse `/` e escolha o banco, ou vá direto em `http://localhost:9097/{slug}/integracoes?usr_cod=<USR_CODIGO>`.
-2. Para cadastrar/editar conexões: `/config/bancos` (usuário/senha de `CONFIG_ADMIN_*`).
+1. Acesse `/` e autentique com `CONFIG_ADMIN_*` para escolher o banco, ou vá direto em `http://localhost:9097/{slug}/integracoes?usr_cod=<USR_CODIGO>`.
+2. A mesma autenticação HTTP Basic protege todo o painel, a execução interna `/{slug}/v1/executar/{nome}` e `/config/*`.
+3. O `usr_cod` continua sendo usado para identificar e validar o usuário do ERP.
 
 > O painel por `usr_cod` deve permanecer em rede interna ou atrás de VPN/proxy autenticado.
 
@@ -170,6 +172,7 @@ O script recebe automaticamente as seguintes variáveis:
 ## API Externa (Terceiros)
 
 Módulo ativado automaticamente quando `API_JWT_SECRET` está definido no `.env`.
+A API externa em `/{slug}/api/v1/*` continua autenticada por JWT e não é protegida por `CONFIG_ADMIN_*`.
 
 ### Fluxo de Autenticação
 
@@ -189,7 +192,7 @@ Módulo ativado automaticamente quando `API_JWT_SECRET` está definido no `.env`
 |--------|------|-----------|
 | `POST` | `/{slug}/api/v1/auth/token` | Autenticação (retorna JWT) |
 | `POST` | `/{slug}/api/v1/executar/{nome}` | Executa uma integração (requer Bearer token) |
-| `GET`  | `/{slug}/api/docs` | Swagger interativo (protegido por Basic Auth) |
+| `GET`  | `/{slug}/api/docs` | Swagger interativo (HTTP Basic com o **login/senha do próprio terceiro**, não o `CONFIG_ADMIN_*`) |
 
 ---
 

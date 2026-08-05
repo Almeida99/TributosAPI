@@ -7,11 +7,16 @@ from fastapi import APIRouter, Request, Form, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from src.core.admin_auth import require_admin_basic
 from src.core.database import db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="", tags=["GUI"])
+router = APIRouter(
+    prefix="",
+    tags=["GUI"],
+    dependencies=[Depends(require_admin_basic)],
+)
 templates = Jinja2Templates(directory=["src/ui/templates", "src/ui"])
 
 
